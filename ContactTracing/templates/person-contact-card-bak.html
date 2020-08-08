@@ -1,0 +1,67 @@
+<div id="myModal_{{ x.case_id }}" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header card-header">
+              <div class="col-6">
+                <h4 class="modal-title">{{ x.person.first }}
+                    {% if x.person.mi %} {{ x.person.mi }}
+                    {% endif %} {{ x.person.last}}{% if x.person.suffix %} {{ x.person.suffix }}{% endif %}
+                </h4>
+              </div>
+              <div class="col-5">
+                  <h4>DOB: {{ x.person.dob }}</h4>
+              </div>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="card-group">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="card-title">Tentative Release Date</h5>
+              </div>
+              <div class="card-body">
+                  <p class="card-text">{{ x.tent_rel }}</p>
+              </div>
+            </div>
+            {% if x.status.status_id == 11 %}
+            <div class="card text-white bg-success">
+                    {% else %}
+            <div class="card">
+                {% endif %}
+              <div class="card-header">
+                <h5 class="card-title">Status</h5>
+              </div>
+              <div class="card-body">
+                  <p class="card-text">{{ x.status.status }}</p>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h5 class="card-title">Release Date</h5>
+              </div>
+              <div class="card-body">
+                  <p class="card-text">{{ x.release_date }}</p>
+              </div>
+            </div>
+        </div>
+                {% if x.iso_pcp %}
+<!--       Begin Card group to hold Primary Care info         -->
+                 {% endif %}
+
+            {% include 'symptom-table.html' %}
+            {% include 'call-log.html' %}
+
+
+
+
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>

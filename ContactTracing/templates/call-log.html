@@ -1,0 +1,20 @@
+<!--   Begin Section for Call Log         -->
+            <div class="card-group">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">PCHD Call Log</h5>
+                    </div>
+                    {% for log in logs %}
+                    {% if log.case_id == case.case_id %}
+                    <div class="card-group">
+                        <div class="card">
+                            {{ log.log.notes }}
+                        </div>
+                        <div class="card">
+                            {{ log.log.user.first_name }} {{ log.log.user.last_name }} / {{ log.log.log_date }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>

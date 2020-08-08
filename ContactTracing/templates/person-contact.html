@@ -1,0 +1,19 @@
+<div class="col-6 float-right">
+    <table class="table table-striped">
+        <h3>Phone</h3>
+        <thead>
+            <tr>
+                <th>Numbers</th>
+                <th>Note</th>
+            </tr>
+            {% for phone in phones %}
+            {% if phone.person.person_id == x.person.person_id %}
+            <tr>
+                <td>{{ phone.phone.phone_number }}</td>
+                <td>{{ phone.note }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </thead>
+    </table>
+</div>

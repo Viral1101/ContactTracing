@@ -1,0 +1,97 @@
+<!--   Begin Card group to hold symptom information     -->
+<div class="card-group">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">Symptom Information</h5>
+        </div>
+        {% if symptoms %}
+            <div class="card-group">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Sx</h6>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Start</h6>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">End</h6>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Note</h6>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Status</h6>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Alt Dx</h6>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Logged</h6>
+                    </div>
+                </div>
+            </div>
+
+            {% for symptom in symptoms %}
+
+            <div class="card-group">
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.sx.symptom }}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.sx_log.start }}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.sx_log.end }}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.sx_log.note }}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.sx_log.sx_state.sx_state }}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">6
+                        {{ symptom.sx_log.alt_dx }}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.sx_log.user.first_name }} {{ symptom.sx_log.user.last_name }} {{ symptom.sx_log.rec_date }}
+                    </div>
+                </div>
+            </div>
+
+            {% endfor %}
+        {% else %}
+        <div class="card-body">
+            <p class="card-text">No recorded symptom data.</p>
+        </div>
+        {% endif %}
+
+
+<!--Table not working here, use cards?-->
+
+    </div>
+</div>

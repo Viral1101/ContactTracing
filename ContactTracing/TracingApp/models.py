@@ -1,3 +1,585 @@
+# This is an auto-generated Django model module.
+# You'll have to do the following manually to clean this up:
+#   * Rearrange models' order
+#   * Make sure each model has one field with primary_key=True
+#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
-# Create your models here.
+
+class Addresses(models.Model):
+    address_id = models.AutoField(primary_key=True)
+    street = models.TextField(blank=True, null=True)
+    street2 = models.TextField(blank=True, null=True)
+    city = models.TextField(blank=True, null=True)
+    state = models.CharField(max_length=2, blank=True, null=True)
+    post_code = models.CharField(max_length=5, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'addresses'
+
+
+class AssignmentType(models.Model):
+    assign_type_id = models.AutoField(primary_key=True)
+    assign_type = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'assignment_type'
+
+
+class Assignments(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case = models.ForeignKey('Cases', models.DO_NOTHING, blank=True, null=True)
+    contact = models.ForeignKey('Contacts', models.DO_NOTHING, blank=True, null=True)
+    outbreak = models.ForeignKey('Outbreaks', models.DO_NOTHING, blank=True, null=True)
+    assign_type = models.ForeignKey(AssignmentType, models.DO_NOTHING, blank=True, null=True)
+    status = models.IntegerField()
+    user = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    date_done = models.DateField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'assignments'
+
+
+class AuthGroup(models.Model):
+    name = models.CharField(unique=True, max_length=150)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_group'
+
+
+class AuthGroupPermissions(models.Model):
+    group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
+    permission = models.ForeignKey('AuthPermission', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_group_permissions'
+        unique_together = (('group', 'permission'),)
+
+
+class AuthPermission(models.Model):
+    name = models.CharField(max_length=255)
+    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING)
+    codename = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_permission'
+        unique_together = (('content_type', 'codename'),)
+
+
+class AuthUser(models.Model):
+    password = models.CharField(max_length=128)
+    last_login = models.DateTimeField(blank=True, null=True)
+    is_superuser = models.IntegerField()
+    username = models.CharField(unique=True, max_length=150)
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=150)
+    email = models.CharField(max_length=254)
+    is_staff = models.IntegerField()
+    is_active = models.IntegerField()
+    date_joined = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'auth_user'
+
+    def __str__(self):
+        return self.first_name + ' ' + self.last_name
+
+
+class AuthUserGroups(models.Model):
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_user_groups'
+        unique_together = (('user', 'group'),)
+
+
+class AuthUserUserPermissions(models.Model):
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    permission = models.ForeignKey(AuthPermission, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_user_user_permissions'
+        unique_together = (('user', 'permission'),)
+
+
+class CaseContactJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case = models.ForeignKey('Cases', models.DO_NOTHING)
+    contact = models.ForeignKey('Contacts', models.DO_NOTHING)
+    relation_to_case = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'case_contact_join'
+
+
+class CaseLogJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case = models.ForeignKey('Cases', models.DO_NOTHING)
+    log = models.ForeignKey('TraceLogs', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'case_log_join'
+
+
+class CaseSxJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case = models.ForeignKey('Cases', models.DO_NOTHING)
+    sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'case_sx_join'
+
+    def __str__(self):
+        data = {'case': self.case,
+                'sx': self.sx}
+        output = '{case} || {sx}'.format(**data)
+        return output
+
+
+class Cases(models.Model):
+    case_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey('Persons', models.DO_NOTHING)
+    test_id = models.IntegerField(blank=True, null=True)
+    confirmed = models.IntegerField(blank=True, null=True)
+    status = models.ForeignKey('Statuses', models.DO_NOTHING)
+    tent_release = models.DateField(blank=True, null=True)
+    iso_pcp = models.BooleanField(blank=True, null=True)
+    reqs_pcp = models.TextField(blank=True, null=True)
+    release_date = models.DateField(blank=True, null=True)
+    next_follow = models.DateField(blank=True, null=True)
+    rel_pcp = models.BooleanField(blank=True, null=True)
+    active = models.BooleanField()
+    released = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
+    old_case_no = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'cases'
+
+    def __str__(self):
+        data = {'id': self.case_id,
+                'person': self.person}
+        output = 'C{id}: {person}'.format(**data)
+        return output
+
+
+class ContactLogJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    contact = models.ForeignKey('Contacts', models.DO_NOTHING)
+    log = models.ForeignKey('TraceLogs', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'contact_log_join'
+
+
+class ContactPrefs(models.Model):
+    pref_id = models.AutoField(primary_key=True)
+    pref = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'contact_prefs'
+
+
+class ContactSxJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case = models.ForeignKey('Contacts', models.DO_NOTHING)
+    sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'contact_sx_join'
+
+
+class Contacts(models.Model):
+    contact_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey('Persons', models.DO_NOTHING)
+    init_exposure = models.DateField(blank=True, null=True)
+    can_quarantine = models.IntegerField(blank=True, null=True)
+    tent_qt_end = models.DateField(blank=True, null=True)
+    status = models.ForeignKey('Statuses', models.DO_NOTHING)
+    last_follow = models.DateField(blank=True, null=True)
+    active = models.BooleanField()
+    old_contact_no = models.TextField(blank=True, null=True)
+    last_exposure = models.DateField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'contacts'
+
+
+class DjangoAdminLog(models.Model):
+    action_time = models.DateTimeField()
+    object_id = models.TextField(blank=True, null=True)
+    object_repr = models.CharField(max_length=200)
+    action_flag = models.PositiveSmallIntegerField()
+    change_message = models.TextField()
+    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING, blank=True, null=True)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'django_admin_log'
+
+
+class DjangoContentType(models.Model):
+    app_label = models.CharField(max_length=100)
+    model = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'django_content_type'
+        unique_together = (('app_label', 'model'),)
+
+
+class DjangoMigrations(models.Model):
+    app = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
+    applied = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'django_migrations'
+
+
+class DjangoSession(models.Model):
+    session_key = models.CharField(primary_key=True, max_length=40)
+    session_data = models.TextField()
+    expire_date = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'django_session'
+
+
+class Emails(models.Model):
+    email_id = models.AutoField(primary_key=True)
+    email_address = models.CharField(max_length=320, blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'emails'
+
+
+class Employers(models.Model):
+    employer_id = models.AutoField(primary_key=True)
+    employer_name = models.TextField(blank=True, null=True)
+    phone = models.ForeignKey('Phones', models.DO_NOTHING, blank=True, null=True)
+    email = models.ForeignKey(Emails, models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'employers'
+
+
+class ExternalCases(models.Model):
+    ex_case_id = models.AutoField(primary_key=True)
+    source = models.ForeignKey('ExternalSources', models.DO_NOTHING)
+    rcvd_date = models.DateField(blank=True, null=True)
+    active = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'external_cases'
+
+
+class ExternalSources(models.Model):
+    source_id = models.AutoField(primary_key=True)
+    source_name = models.TextField()
+    phone = models.ForeignKey('Phones', models.DO_NOTHING, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'external_sources'
+
+
+class OutbreakCaseJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case_id = models.IntegerField()
+    outbreak_id = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'outbreak_case_join'
+
+
+class OutbreakContactJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    outbreak_id = models.IntegerField()
+    contact_id = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'outbreak_contact_join'
+
+
+class Outbreaks(models.Model):
+    outbreak_id = models.AutoField(primary_key=True)
+    address = models.ForeignKey(Addresses, models.DO_NOTHING, blank=True, null=True)
+    phone = models.ForeignKey('Phones', models.DO_NOTHING, blank=True, null=True)
+    active = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'outbreaks'
+
+
+class PersonAddressJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    person_id = models.IntegerField()
+    address_id = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'person_address_join'
+
+
+class PersonEmailJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey('Persons', models.DO_NOTHING)
+    email = models.ForeignKey(Emails, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'person_email_join'
+
+
+class PersonEmployerJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey('Persons', models.DO_NOTHING)
+    employer = models.ForeignKey(Employers, models.DO_NOTHING)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'person_employer_join'
+
+
+class PersonPhoneJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    phone = models.ForeignKey('Phones', models.DO_NOTHING)
+    person = models.ForeignKey('Persons', models.DO_NOTHING)
+    note = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'person_phone_join'
+
+
+class Persons(models.Model):
+    person_id = models.AutoField(primary_key=True)
+    first = models.TextField()
+    last = models.TextField()
+    mi = models.CharField(max_length=5, blank=True, null=True)
+    suffix = models.CharField(max_length=10, blank=True, null=True)
+    address = models.ForeignKey(Addresses, models.DO_NOTHING, blank=True, null=True)
+    sex = models.CharField(max_length=1, blank=True, null=True)
+    dob = models.DateField(blank=True, null=True)
+    age = models.IntegerField(blank=True, null=True)
+    pronunciation = models.TextField(blank=True, null=True)
+    contact_pref = models.ForeignKey(ContactPrefs, models.DO_NOTHING, blank=True, null=True)
+    needs_docs = models.IntegerField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'persons'
+
+    def __str__(self):
+        data = {'first': self.first,
+                'mi': '' if self.mi is None else self.mi + ' ',
+                'last': self.last,
+                'suffix': '' if self.suffix is None else ' ' + self.suffix + ' ',
+                'dob': self.dob,
+                'age': self.age,
+                'sex': self.sex}
+        output = '[{first} {mi}{last}{suffix}] DOB: {dob}, Age: {age}, Sex: {sex}'.format(**data)
+        return output
+
+
+class Phones(models.Model):
+    phone_id = models.AutoField(primary_key=True)
+    phone_number = models.CharField(max_length=11)
+
+    class Meta:
+        managed = False
+        db_table = 'phones'
+
+
+class Roles(models.Model):
+    role_id = models.AutoField(primary_key=True)
+    role = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'roles'
+
+
+class Statuses(models.Model):
+    status_id = models.AutoField(primary_key=True)
+    status = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'statuses'
+
+
+class SxStates(models.Model):
+    state_id = models.AutoField(primary_key=True)
+    sx_state = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'sx_states'
+
+    def __str__(self):
+        return self.sx_state
+
+
+class SxLog(models.Model):
+    log_id = models.AutoField(primary_key=True)
+    start = models.DateField(blank=True, null=True)
+    end = models.DateField(blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
+    alt_dx = models.TextField(blank=True, null=True)
+    sx_state = models.ForeignKey(SxStates, models.DO_NOTHING)
+    rec_date = models.DateField(blank=True, null=True)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'sx_log'
+
+    def __str__(self):
+        data = {'start': self.start,
+                'end': self.end,
+                'alternate':  'alternate dx: ' + self.alt_dx,
+                'note': 'notes:' + self.note,
+                'state': self.sx_state.sx_state}
+        output = 'Started: {start} // Ended: {end} // {alternate} // {note} // {state}'.format(**data)
+        return output
+
+
+class SxLogJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
+    sx_log = models.ForeignKey('SxLog', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'sx_log_join'
+
+    def __str__(self):
+        data = {'symptom': self.sx,
+                'log': self.sx_log}
+        output = '{symptom} {log}'.format(**data)
+        return output
+
+
+class SymptomDefs(models.Model):
+    symptom_id = models.AutoField(primary_key=True)
+    symptom = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'symptom_defs'
+
+    def __str__(self):
+        return self.symptom
+
+
+class Symptoms(models.Model):
+    sx_id = models.AutoField(primary_key=True)
+    symptom = models.ForeignKey(SymptomDefs, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'symptoms'
+
+    def __str__(self):
+        data = {'symptom': self.symptom,
+                'id': self.sx_id}
+        output = 'SX#: {id} - {symptom}'.format(**data)
+        return output
+
+
+class TestTypes(models.Model):
+    test_type_id = models.AutoField(primary_key=True)
+    test_type = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'test_types'
+
+
+class Tests(models.Model):
+    test_id = models.AutoField(primary_key=True)
+    test_trace = models.TextField(blank=True, null=True)
+    sample_date = models.DateField(blank=True, null=True)
+    result_date = models.DateField(blank=True, null=True)
+    rcvd_date = models.DateField(blank=True, null=True)
+    result = models.IntegerField(blank=True, null=True)
+    test_type = models.ForeignKey(TestTypes, models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'tests'
+
+
+class TraceLogs(models.Model):
+    log_id = models.AutoField(primary_key=True)
+    notes = models.TextField()
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    log_date = models.DateField()
+
+    class Meta:
+        managed = False
+        db_table = 'trace_logs'
+
+    def __str__(self):
+        text = self.notes[:30]
+        first = self.user.first_name
+        last = self.user.last_name
+        log_date = self.log_date
+
+        data = {'f': first,
+                'l': last,
+                't': text,
+                'log': log_date}
+        output = '{t} [[{f} {l} {log}]]'.format(**data)
+
+        return output
+
+
+class Users(models.Model):
+    user_id = models.AutoField(primary_key=True)
+    first = models.TextField()
+    last = models.TextField()
+    initials = models.CharField(max_length=3)
+    email_id = models.IntegerField()
+    role_id = models.IntegerField()
+    pass_field = models.CharField(db_column='pass',
+                                  max_length=255)  # Field renamed because it was a Python reserved word.
+    active = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'users'

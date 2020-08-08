@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ name }}{% endblock %}
+
+{% block content2 %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+      <h1 class="h2">{{ name }}</h1>
+    </div>
+{% if cases %}
+    <div class="table-responsive">
+      <table class="table table-striped table-sm table-hover">
+        <thead>
+          <tr>
+            <th>{% if type == 'C' %}Case ID{% else %}Contact ID{% endif %}</th>
+            <th>Name</th>
+            <th>{% if type == 'C' %}DOB{% else %}DOB/Age{% endif %}</th>
+            <th>Address</th>
+            <th>Status</th>
+            <th>Follow-up Date</th>
+            <th>Active</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for x in cases %}
+          <tr>
+            <td style="transform: rotate(0);"><a class="stretched-link" href="/TracingApp/info/{{ type }}/{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}">{{ type }}{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}</a></td>
+            <td>{{ x.person.first }} {{ x.case.person.last }}</td>
+            <td>{{ x.person.dob }}</td>
+            <td>{{ x.person.address.street }}
+                {% if x.person.address.street2 %}
+                    {{ x.person.address.street2 }}
+                {% endif %} {{ x.person.address.city }}, {{ x.person.address.state }} {{ x.person.address.post_code }}</td>
+            <td>{{ x.status.status }}</td>
+            <td>{{ x.next_follow }}</td>
+            <td>{% if x.active %}Open{% else %}Closed{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% else %}
+<h3>Something very bad has happened.</h3>
+<h4>The cases tables is empty. Contact the admin.</h4>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,33 @@
+<div class="card-group">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Primary Care Physician</h5>
+                </div>
+                <div class="card-body">
+                    {% if case.iso_pcp %}
+                    <div class="card-deck">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Isolation Order</h5>
+                              <p class="card-text">{% if case.iso_pcp %}Yes{% else %}No{% endif %}</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Release Requirements</h5>
+                              <p class="card-text">{% if case.reqs_pcp %}{{ case.reqs_pcp }}{% else %}No{% endif %}</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">PCP Released</h5>
+                              <p class="card-text">{% if case.rel_pcp %}{{ case.reqs_pcp }}{% else %}N/A{% endif %}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="card-text">No Primary Care guidance recorded.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>

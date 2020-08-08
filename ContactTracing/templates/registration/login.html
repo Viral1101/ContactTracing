@@ -1,0 +1,79 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<!--<h2>Login</h2>-->
+<!--<form method="post">-->
+<!--  {% csrf_token %}-->
+<!--  {{ form.as_p }}-->
+<!--  <button type="submit">Login</button>-->
+<!--</form>-->
+<!--<div class="container-fluid">-->
+<!--  <div class="row">-->
+<!--    <div class="col"></div>-->
+<!--    <div class="col align-self-center">-->
+<!--      <form class="form-signin" method="post">-->
+<!--        {% csrf_token %}-->
+<!--        <img class="mb-4" src="https://getbootstrap.com/assets/brand/bootstrap-solid.svg" alt="" width="72" height="72">-->
+<!--        <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>-->
+<!--        <label for="id_username" class="sr-only">Email address</label>-->
+<!--&lt;!&ndash;        <input id="inputEmail" class="form-control" placeholder="Email address" required="" autofocus="" type="email">&ndash;&gt;-->
+<!--        <input name="username" id="id_username" class="form-control" placeholder="Email address" required="" autofocus="" type="">-->
+<!--        <label for="id_password" class="sr-only">Password</label>-->
+<!--        <input id="id_password" name="password" class="form-control" placeholder="Password" required="" type="password">-->
+<!--        <div class="checkbox mb-3">-->
+<!--          <label>-->
+<!--            <input value="remember-me" type="checkbox"> Remember me-->
+<!--          </label>-->
+<!--        </div>-->
+<!--        <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>-->
+<!--        <p class="mt-5 mb-3 text-muted">© 2020</p>-->
+<!--      </form>-->
+<!--    </div>-->
+<!--    <div class="col"></div>-->
+<!--  </div>-->
+<!--</div>-->
+<main>
+  <div class="container-fluid">
+    <div class="row no-gutter">
+      <div class="d-none d-md-flex col-md-4 col-lg-6 bg-image"></div>
+      <div class="col-md-8 col-lg-6">
+        <div class="login d-flex align-items-center py-5">
+          <div class="container">
+            <div class="row">
+              <div class="col-md-9 col-lg-8 mx-auto">
+                <h3 class="login-heading mb-4">Welcome back!</h3>
+                <form method="post">
+                  {% csrf_token %}
+                  <div class="form-label-group">
+                    <input name="username" type="text" id="id_username" class="form-control" placeholder="Email address" required autofocus>
+                    <label for="id_username">Email address</label>
+                  </div>
+
+                  <div class="form-label-group">
+                    <input name="password" type="password" id="id_password" class="form-control" placeholder="Password" required>
+                    <label for="id_password">Password</label>
+                  </div>
+
+                  <div class="custom-control custom-checkbox mb-3">
+                    <input type="checkbox" class="custom-control-input" id="customCheck1">
+                    <label class="custom-control-label" for="customCheck1">Remember password</label>
+                  </div>
+                  <button class="btn btn-lg btn-primary btn-block btn-login text-uppercase font-weight-bold mb-2" type="submit">Sign in</button>
+                  <div class="text-center">
+                    <a class="small" href="#">Forgot password?</a></div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+{% endblock %}
+

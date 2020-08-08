@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content2 %}
+
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+      <h1 class="h2">My Assignments</h1>
+    </div>
+{% if cases %}
+    <h2>Cases</h2>
+    <div class="table-responsive">
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th>Assignment Type</th>
+            <th>Case ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Follow-up Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for x in cases %}
+          <tr>
+            <td>{{ x.assign_type.assign_type }}</td>
+            <td>C{{ x.case_id }}</td>
+            <td>{{ x.case.person.first }} {{ x.case.person.last }}</td>
+            <td>{{ x.case.status.status }}</td>
+            <td>{{ x.case.next_follow }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% endif %}
+
+{% if contacts %}
+<h2>Contacts</h2>
+    <div class="table-responsive">
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th>Assignment Type</th>
+            <th>Contact ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Follow-up Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for x in contacts %}
+            <tr>
+
+              <td>{{ x.assign_type.assign_type }}</td>
+
+              <td><a href="/contact/">CT{{ x.contact_id }}</a></td>
+              <td>{{ x.contact.person.first }} {{ x.contact.person.last }}</td>
+              <td>{{ x.contact.status.status }}</td>
+              <td>{{ x.contact.next_follow }}</td>
+
+            </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% endif %}
+
+{% if outbreaks %}
+<h2>Outbreaks</h2>
+    <div class="table-responsive">
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th>Assignment Type</th>
+            <th>Outbreak ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Follow-up Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for x in outbreaks %}
+          <tr>
+            <td>{{ x.assign_type.assign_type }}</td>
+            <td>O{{ x.outbreak_id }}</td>
+            <td>{{ x.case.person.first }} {{ x.case.person.last }}</td>
+            <td>{{ x.case.status.status }}</td>
+            <td>1</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,97 @@
+<div class="card-group">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">{% if type == 'Contact' %}Linked Cases{% else %}Contacts{% endif %}</h5>
+        </div>
+    </div>
+</div>
+{% if contacts %}
+    {% for contact in contacts %}
+<div class="card">
+    <div class="card-header" style="transform: rotate(0);">
+        <h6 class="card-title"><a class="stretched-link"
+                               href="/TracingApp/info/CT/{{ contact.contact_id }}">CT{{ contact.contact_id }} /
+                                {{ contact.contact.person.first }}
+                                {% if contact.contact.person.mi %} {{ contact.contact.person.mi }}
+                                {% endif %} {{ contact.contact.person.last}}{% if contact.contact.person.suffix %}
+                                {{ contact.contact.person.suffix }}{% endif %}{% if contact.contact.person.dob %} /
+                                {{ contact.contact.person.dob }}{% elif contact.contact.person.age %} / {{ contact.contact.person.age }}{% endif %} /
+                                <i>{{ contact.relation_to_case }}</i>
+                            </a></h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="card col-sm-2 p-0">
+                <ul class="list-group">
+                  <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">Last Exp: {{ contact.contact.last_exposure }}</li>
+                  <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">QT End: {{ contact.contact.tent_qt_end }}</li>
+                  <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">Last Follow-up: {{ contact.contact.next_follow }}</li>
+                  <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">{{ contact.contact.status.status }}</li>
+                </ul>
+            </div>
+            <div class="card col-sm-4 p-0" style="overflow-y: scroll;">
+                {% if ct_symptoms %}
+                {% for ct_symptom in ct_symptoms %}
+                {% if ct_symptom.case_id == contact.contact_id and type == 'Case' %}
+                <div class="card-header">
+                    <h6 class="card-title">{{ ct_symptom.sx.symptom }}</h6>
+                </div>
+                {% elif ct_symptom.case_id == contact.case_id and type == 'Contact' %}
+                <div class="card-header">
+                    <h6 class="card-title">{{ ct_symptom.sx.symptom }}</h6>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    {% for ct_symptom_log in ct_symptoms_details %}
+
+                    <div class="card">
+                        <div class="card-header">
+                            {{ ct_symptom_log.sx_log.rec_date }} {{ ct_symptom_log.sx_log.user.first_name }} {{ ct_symptom_log.sx_log.user.last_name }}
+                        </div>
+                        <div class="card-group">
+                            <div class="card">{{ ct_symptom_log.sx_log.sx_state }}</div>
+                            <div class="card">{{ ct_symptom_log.sx_log.note }}</div>
+                            <div class="card">st:{{ ct_symptom_log.sx_log.start }}</div>
+                            <div class="card">end:{{ ct_symptom_log.sx_log.ende }}</div>
+                        </div>
+                    </div>
+
+    <!--                endif-->
+
+                {% endfor %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="card-header">
+                    <h6 class="card-title">No Reported Symptoms</h6>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card col-sm-6 p-0">
+                {% if ct_logs %}
+                {% for ct_log in ct_logs %}
+                {% if ct_log %}
+                <div class="card-header">
+                    <h6 class="card-title">{{ ct_log.log.log_date }} - {{ ct_log.log.user.first_name }} {{ ct_log.log.user.last_name }}</h6>
+                </div>
+                <div class="card-body">
+                    {{ ct_log.log.notes }}
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% else %}
+                <div class="card-header">
+                    <h6 class="card-title">No Recorded Contact Attempts</h6>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endfor %}
+{% else %}
+<div class="card-body">
+    <p class="card-text">No Contacts reported.</p>
+</div>
+{% endif %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Tracing Information - {{ type }}{% endblock %}
+
+{% block content2 %}
+{% if case.active %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center border-bottom">
+{% else %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center border-bottom bg-secondary text-white">
+{% endif %}
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-4">
+                    <h1 class="h2">{{ case.person.first }}
+                            {% if case.person.mi %} {{ case.person.mi }}
+                            {% endif %} {{ case.person.last}}{% if case.person.suffix %} {{ case.person.suffix }}{% endif %}</h1>
+                </div>
+                <div class="col-sm-6">
+                    <h1 class="h2">DOB: {{ case.person.dob }}</h1>
+                </div>
+                <div class="col-sm-2">
+                        <h1 class="h2">{% if case.active %} Open {% else %} Closed {% endif %}</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+        {% include 'person-contact-card.html' %}
+        {% include 'release-info.html' %}
+        {% include 'pcp-info.html' %}
+        {% include 'symptom-table.html' %}
+        {% include 'call-log.html' %}
+        <!-- if type == 'Case' %} -->
+            {% include 'contact-card-contacts-list.html' %}
+        <!-- else %}
+             include 'contact-card-cases-list.html'
+         endif %}-->
+    {% endblock %}

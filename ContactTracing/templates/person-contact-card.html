@@ -1,0 +1,63 @@
+<div class="card-group">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title">Address</h5>
+      </div>
+      <div class="card-body">
+          {% if case.person.address %}
+          <p class="card-text">{{ case.person.address.street }}</br>
+          {% if case.person.address.street2 %}
+            {{ case.person.address.street2 }}</br>
+          {% endif %}
+          {{ case.person.address.city }}, {{ case.person.address.state }} {{ case.person.address.post_code }}</p>
+          {% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+            <h5 class="card-title">Phone</h5>
+      </div>
+      <div class="card-body">
+        {% if phones %}
+        <ul class="list-group list-group-flush">
+        {% for phone in phones %}
+            {% if phone.person.person_id == case.person_id %}
+            <li class="list-group-item">{{ phone.phone.phone_number }}
+                {% if phone.note %}
+                <p class="blockquote-footer">{{ phone.note }}</p>
+                {% endif %}
+            </li>
+            {% endif %}
+        {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+    {% if case.person.pronunciation %}
+    <div class="card">
+      <div class="card-header">
+            <h5 class="card-title">Pronunciation</h5>
+      </div>
+      <div class="card-body">
+          {{ case.person.pronunciation }}
+      </div>
+    </div>
+    {% endif %}
+    {% if case.next_follow <= today and case.active %}
+    <div class="card text-white bg-danger">
+        {% else %}
+    <div class="card border-success">
+        {% endif %}
+      <div class="card-header">
+            <h5 class="card-title">Follow-up</h5>
+      </div>
+      <div class="card-body">
+          {% if case.next_follow <= today and case.active %}
+          <p class="card-text">
+              {% else %}
+          <p class="card-text text-success">
+          {% endif %}
+              {{ case.next_follow }}</p>
+      </div>
+    </div>
+</div>

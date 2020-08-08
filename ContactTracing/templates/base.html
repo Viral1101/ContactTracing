@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+{% include 'header.html' %}
+<body>
+<div class="container-fluid">
+    {% if user.is_authenticated %}
+    {% include 'base-dash.html' %}
+
+      {% block content2 %}
+      {% endblock %}
+
+  </main>
+</div>
+    {% else %}
+    {% block content %}
+    {% endblock %}
+    {% endif %}
+</div>
+</body>
+</html>
