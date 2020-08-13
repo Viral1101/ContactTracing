@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Add New{% endblock %}
+
+{% block content2 %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+      <h1 class="h2">Create New Person</h1>
+</div>
+<form method="post">
+    {% csrf_token %}
+
+{{ personform.management_form }}
+    {{ personform.as_p }}
+    {{ personform.media }}
+
+    {{ addressform.management_form }}
+    {{ addressform.as_p }}
+    {{ addressform.media }}
+
+    {{ phoneform.management_form }}
+    {{ phoneform.as_p }}
+    {{ phoneform.media }}
+
+
+    <input type="submit" value="Save">
+</form>
+{% endblock %}

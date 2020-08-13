@@ -17,9 +17,35 @@ class Addresses(models.Model):
     post_code = models.CharField(max_length=5, blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'addresses'
 
+    def __str__(self):
+        if self.street:
+            _street = self.street
+        else:
+            _street = ''
+        if self.street2:
+            _street2 = ' ' + self.street2
+        else:
+            _street2 = ''
+        if self.street:
+            _city = ' ' + self.city
+        else:
+            _city = self.city
+        _state = self.state
+        if self.post_code:
+            _zip = self.post_code
+        else:
+            _zip = ''
+        data = {'street': _street,
+                'street2': _street2,
+                'city': _city,
+                'state': _state,
+                'zip': _zip,
+                }
+        output = '{street}{street2}{city}, {state} {zip}'.format(**data)
+        return output
 
 class AssignmentType(models.Model):
     assign_type_id = models.AutoField(primary_key=True)
@@ -29,6 +55,9 @@ class AssignmentType(models.Model):
         managed = False
         db_table = 'assignment_type'
 
+    def __str__(self):
+        return self.assign_type
+
 
 class Assignments(models.Model):
     join_id = models.AutoField(primary_key=True)
@@ -36,12 +65,12 @@ class Assignments(models.Model):
     contact = models.ForeignKey('Contacts', models.DO_NOTHING, blank=True, null=True)
     outbreak = models.ForeignKey('Outbreaks', models.DO_NOTHING, blank=True, null=True)
     assign_type = models.ForeignKey(AssignmentType, models.DO_NOTHING, blank=True, null=True)
-    status = models.IntegerField()
+    status = models.BooleanField()
     user = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
     date_done = models.DateField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'assignments'
 
 
@@ -121,7 +150,7 @@ class CaseContactJoin(models.Model):
     relation_to_case = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'case_contact_join'
 
 
@@ -131,7 +160,7 @@ class CaseLogJoin(models.Model):
     log = models.ForeignKey('TraceLogs', models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'case_log_join'
 
 
@@ -141,7 +170,7 @@ class CaseSxJoin(models.Model):
     sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'case_sx_join'
 
     def __str__(self):
@@ -168,7 +197,7 @@ class Cases(models.Model):
     old_case_no = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'cases'
 
     def __str__(self):
@@ -184,7 +213,7 @@ class ContactLogJoin(models.Model):
     log = models.ForeignKey('TraceLogs', models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'contact_log_join'
 
 
@@ -203,7 +232,7 @@ class ContactSxJoin(models.Model):
     sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'contact_sx_join'
 
 
@@ -220,7 +249,7 @@ class Contacts(models.Model):
     last_exposure = models.DateField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'contacts'
 
 
@@ -274,7 +303,7 @@ class Emails(models.Model):
     note = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'emails'
 
 
@@ -285,7 +314,7 @@ class Employers(models.Model):
     email = models.ForeignKey(Emails, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'employers'
 
 
@@ -344,11 +373,11 @@ class Outbreaks(models.Model):
 
 class PersonAddressJoin(models.Model):
     join_id = models.AutoField(primary_key=True)
-    person_id = models.IntegerField()
-    address_id = models.IntegerField()
+    person = models.ForeignKey('Persons', models.DO_NOTHING, blank=True, null=True)
+    address = models.ForeignKey('Addresses', models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'person_address_join'
 
 
@@ -358,7 +387,7 @@ class PersonEmailJoin(models.Model):
     email = models.ForeignKey(Emails, models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'person_email_join'
 
 
@@ -380,7 +409,7 @@ class PersonPhoneJoin(models.Model):
     note = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'person_phone_join'
 
 
@@ -390,7 +419,7 @@ class Persons(models.Model):
     last = models.TextField()
     mi = models.CharField(max_length=5, blank=True, null=True)
     suffix = models.CharField(max_length=10, blank=True, null=True)
-    address = models.ForeignKey(Addresses, models.DO_NOTHING, blank=True, null=True)
+    address = models.ForeignKey(PersonAddressJoin, models.DO_NOTHING, blank=True, null=True)
     sex = models.CharField(max_length=1, blank=True, null=True)
     dob = models.DateField(blank=True, null=True)
     age = models.IntegerField(blank=True, null=True)
@@ -400,7 +429,7 @@ class Persons(models.Model):
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'persons'
 
     def __str__(self):
@@ -420,7 +449,7 @@ class Phones(models.Model):
     phone_number = models.CharField(max_length=11)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'phones'
 
 
@@ -440,6 +469,9 @@ class Statuses(models.Model):
     class Meta:
         managed = False
         db_table = 'statuses'
+
+    def __str__(self):
+        return self.status
 
 
 class SxStates(models.Model):
@@ -465,7 +497,7 @@ class SxLog(models.Model):
     user = models.ForeignKey(AuthUser, models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'sx_log'
 
     def __str__(self):
@@ -484,7 +516,7 @@ class SxLogJoin(models.Model):
     sx_log = models.ForeignKey('SxLog', models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'sx_log_join'
 
     def __str__(self):
@@ -499,7 +531,7 @@ class SymptomDefs(models.Model):
     symptom = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'symptom_defs'
 
     def __str__(self):
@@ -511,7 +543,7 @@ class Symptoms(models.Model):
     symptom = models.ForeignKey(SymptomDefs, models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'symptoms'
 
     def __str__(self):
@@ -529,6 +561,9 @@ class TestTypes(models.Model):
         managed = False
         db_table = 'test_types'
 
+    def __str__(self):
+        return self.test_type
+
 
 class Tests(models.Model):
     test_id = models.AutoField(primary_key=True)
@@ -538,9 +573,11 @@ class Tests(models.Model):
     rcvd_date = models.DateField(blank=True, null=True)
     result = models.IntegerField(blank=True, null=True)
     test_type = models.ForeignKey(TestTypes, models.DO_NOTHING, blank=True, null=True)
+    logged_date = models.DateField(blank=True, null=True)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'tests'
 
 
@@ -551,7 +588,7 @@ class TraceLogs(models.Model):
     log_date = models.DateField()
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'trace_logs'
 
     def __str__(self):

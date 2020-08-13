@@ -1,8 +1,13 @@
 from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseNotFound, Http404
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from .models import *
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
+from .forms import CaseForm
+from django.views.generic.edit import FormView
+from django.utils.decorators import method_decorator
+from django.forms import inlineformset_factory, modelformset_factory
+from .forms import *
 
 # Create your views here.
 
@@ -29,25 +34,25 @@ def assigns(request):
 
 @login_required(login_url='/accounts/login/')
 def cases(request):
-    cs_assigns = Assignments.objects.filter(case__case_id__gte=0)
+    # cs_assigns = Assignments.objects.filter(case__case_id__gte=0)
     cs_cases = Cases.objects.all()
-    phones = PersonPhoneJoin.objects.all()
-    today = datetime.today().date()
-    symptoms = CaseSxJoin.objects.all()
-    cs_sx_logs = SxLogJoin.objects.all()
-    logs = CaseLogJoin.objects.all()
-    cs_contacts = CaseContactJoin.objects.all()
+    # phones = PersonPhoneJoin.objects.all()
+    today = datetime.date.today()
+    # symptoms = CaseSxJoin.objects.all()
+    # cs_sx_logs = SxLogJoin.objects.all()
+    # logs = CaseLogJoin.objects.all()
+    # cs_contacts = CaseContactJoin.objects.all()
     ct_type = 'C'
     cs_name = 'Cases'
 
     return render(request, 'case-list.html', {'today': today,
-                                              'phones': phones,
-                                              'assigns': cs_assigns,
+                                              # 'phones': phones,
+                                              # 'assigns': cs_assigns,
                                               'cases': cs_cases,
-                                              'sxLogs': cs_sx_logs,
-                                              'logs': logs,
-                                              'symptoms': symptoms,
-                                              'contacts': cs_contacts,
+                                              # 'sxLogs': cs_sx_logs,
+                                              # 'logs': logs,
+                                              # 'symptoms': symptoms,
+                                              # 'contacts': cs_contacts,
                                               'type': ct_type,
                                               'name': cs_name,})
 
@@ -104,12 +109,12 @@ def info(request, cttype, pid):
     # print(person_id)
     phones = PersonPhoneJoin.objects.filter(person_id=person_id)
     # print(phones)
-    today = datetime.today().date()
+    today = datetime.date.today()
     qt_release = None
     tent_rel_calc = None
 
     if sx_logs is not None:
-        first_sx = datetime.today().date()
+        first_sx = datetime.date.today()
         for sx_log in sx_logs:
             first_sx = min(first_sx, sx_log.start)
     else:
@@ -137,3 +142,119 @@ def info(request, cttype, pid):
                                                  'ct_logs': ct_logs,
                                                  'ct_logs_details': ct_logs_details,
                                                  'today': today})
+
+
+# @method_decorator(login_required, name='dispatch')
+# class NewCaseForm(FormView):
+#     form_class = CaseForm
+#
+#     template_name = 'add-new-case.html'
+#
+#     def dispatch(self, *args, **kwargs):
+#         return super().dispatch(*args, **kwargs)
+#
+#     def form_valid(self, form):
+#         # This method is called when valid form data has been POSTed.
+#         # It should return an HttpResponse.
+#
+#         # perform a action here
+#         print(form.cleaned_data)
+#         return super().form_valid(form)
+
+
+def new_person(request):
+
+    person = Persons()
+    address = Addresses()
+    phone = Phones()
+    personaddress = PersonAddressJoin()
+    personphone = PersonPhoneJoin()
+
+    # PersonAddressFormSet = inlineformset_factory(Persons, PersonAddressJoin, exclude=(), can_delete=False, extra=1)
+    # AddressPersonFormset = inlineformset_factory(Addresses, PersonAddressJoin, exclude=(), can_delete=False, extra=1)
+    # PhoneFormSet = inlineformset_factory(Persons, PersonPhoneJoin, exclude=(), can_delete=False, extra=1)
+
+    if request.method == "POST":
+        personform = NewPersonForm(request.POST, instance=person)
+        addressform = NewAddressForm(request.POST, instance=address)
+        phoneform = NewPhoneNumberForm(request.POST, instance=phone)
+        # personaddressformset = PersonAddressFormSet(request.POST, request.FILES, instance=person)
+        # addresspersonformset = AddressPersonFormset(request.POST, request.FILES, instance=address)
+        # personphoneformset = PersonPhoneFormSet(request.POST, request.FILES, instance=person)
+
+        if personform.is_valid() and addressform.is_valid() and phoneform.is_valid():
+            personaddress.address = personform.instance()
+            personaddress.person = addressform.instance()
+            personphone.person = personform.instance()
+            personphone.phone = phoneform.instance()
+
+            personform.save()
+            addressform.save()
+            phoneform.save()
+            personaddress.save()
+            personphone.save()
+
+            if '_save' in request.POST:
+                return HttpResponseRedirect('/TracingApp/assigns')
+
+    else:
+        personform = NewPersonForm(instance=person)
+        addressform = NewAddressForm(instance=address)
+        phoneform = NewPhoneNumberForm(instance=phone)
+        # personaddressformset = PersonAddressFormSet(instance=person)
+        # addresspersonformset = AddressPersonFormset(instance=address)
+        # personphoneformset = PersonPhoneFormSet(instance=person)
+
+    return render(request, 'test-person.html', {'personform': personform,
+                                                'addressform': addressform,
+                                                'phoneform': phoneform,
+                                                # 'personaddressformset': personaddressformset,
+                                                # 'addresspersonformset': addresspersonformset,
+                                                # 'phonelink': personphoneformset,
+                                                })
+
+
+def new_case_test(request):
+
+    person = Persons()
+    # PersonFormSet = NewPersonForm(instance=person)
+
+    # PersonAddressFormset = inlineformset_factory(Persons, PersonAddressJoin, fields=())
+    AddressFormSet = inlineformset_factory(Addresses, PersonAddressJoin, form=NewAddressForm, extra=1, can_delete=False)
+    # PersonPhoneFormSet = inlineformset_factory(Phones, PersonPhoneJoin, fields=())
+    # PhonePersonsFormSet = inlineformset_factory(Persons, PersonPhoneJoin, fields=())
+    # PhoneFormSet = modelformset_factory(Phones, form=NewPhoneNumberForm)
+    PersonFormSet = inlineformset_factory(Persons, form=NewPersonForm)
+
+    # print(AddressFormSet)
+
+    if request.method == 'POST':
+        address_formset = AddressFormSet(request.POST, request.FILES, prefix='addresses')
+        # person_formset = PersonFormSet(request.POST, prefix='persons')
+        # person_address_formset = PersonAddressFormset(request.POST, request.FILES, prefix='persons_addresses')
+        # phone_formset = PhoneFormSet(request.POST, request.FILES, prefix='phones')
+        # personphone_formset = PersonPhoneFormSet(request.POST, request.FILES, prefix='personphones')
+        # phoneperson_formset = PhonePersonsFormSet(request.POST, request.FILES, prefix='phonepersons')
+        # if address_formset.is_valid() and person_formset.is_valid() and phone_formset.is_valid() and personphone_formset.is_valid() and phonepersion_formset.is_valid():
+        if address_formset.is_valid():
+            print("All valid, time to do something")
+            # formset.save()
+            # do something.
+
+    else:
+        address_formset = AddressFormSet(queryset=PersonAddressJoin.objects.none(), prefix='addresses')
+        # person_formset = PersonFormSet(queryset=Persons.objects.none(), prefix='persons')
+        # person_address_formset = PersonAddressFormset(request.POST, request.FILES, prefix='persons_addresses')
+        # phone_formset = PhoneFormSet(queryset=Phones.objects.none(), prefix='phones')
+        # personphone_formset = PersonPhoneFormSet(prefix='personphones')
+        # phonepersion_formset = PhonePersonsFormSet(prefix='phonepersons')
+
+    # print(address_formset)
+
+    return render(request, 'test-person.html', {'address_formset': address_formset,
+                                                # 'person_formset': person_formset,
+                                                # 'person_address_formset': person_address_formset,
+                                                   # 'phone_formset': phone_formset,
+                                                   # 'personphone_formset': personphone_formset,
+                                                   # 'phonepersion_formset': phonepersion_formset,
+                                                   })
