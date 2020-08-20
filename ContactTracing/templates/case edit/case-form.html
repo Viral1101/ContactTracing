@@ -1,0 +1,29 @@
+<div class="form-row">
+            <div class="">
+                <div class="card flex-row">
+                    <div class="card-header col-md-2">
+                        <div class="row align-items-center">
+                            <h5 class="card-title">Case Information</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-10">
+<!--                        <div class="card">-->
+                            <div class="card-body align-items-center">
+                                {{ caseform.management_form }}
+                                {{ caseform.media }}
+                                <div class="row">
+                                    <div class="input-group col-sm-2">
+                                        <label for='{{ caseform. }}' class="">Confirmed Positive</label>
+                                        {{ caseform.confirmed }}
+                                    </div>
+                                    <div class="col-sm-1"></div>
+                                    <div class="input-group col-sm-2">
+                                        <label for='{{ personform.mi }}' class="">Active Case</label>
+                                        {{ caseform.active }}
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>

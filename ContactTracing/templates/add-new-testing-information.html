@@ -8,33 +8,35 @@
             </div>
             <div class="col-md-10">
                 <div class="card-body align-items-center">
+                    {{ testform.management_form }}
+                    {{ testform.media }}
                     <div class="row">
                         <div class="input-group col-sm-3">
-                            <label for='{{ form.test_date }}' class="">Test Date</label>
-                            {{ form.test_date }}
+                            <label for='{{ testform.sample_date }}' class="">Test Date</label>
+                            {{ testform.sample_date }}
                         </div>
                         <div class="col-sm-1"></div>
                         <div class="input-group col-sm-3">
-                            <label for='{{ form.result_date }}' class="">Result Date</label>
-                            {{ form.result_date }}
+                            <label for='{{ testform.result_date }}' class="">Result Date</label>
+                            {{ testform.result_date }}
                         </div>
                         <div class="col-sm-1"></div>
                         <div class="input-group col-sm-3">
-                            <label for='{{ form.received_date }}' class="">Received Date</label>
-                            {{ form.received_date }}
+                            <label for='{{ testform.rcvd_date }}' class="">Received Date</label>
+                            {{ testform.rcvd_date }}
                         </div>
                     </div>
                 </div>
                 <div class="card-body align-items-center">
                     <div class="row">
                         <div class="form-group col-sm-2">
-                            <label for='{{ form.positive_result }}' class="">Result Positive</label>
-                            {{ form.positive_result }}
+                            <label for='{{ testform.result }}' class="">Result Positive</label>
+                            {{ testform.result }}
                         </div>
                         <div class="col-sm-1"></div>
                         <div class="form-group col-sm-3">
-                            <label for='{{ form.test_type }}' class="">Test Type</label>
-                            {{ form.test_type }}
+                            <label for='{{ testform.test_type }}' class="">Test Type</label>
+                            {{ testform.test_type }}
                         </div>
                     </div>
                 </div>

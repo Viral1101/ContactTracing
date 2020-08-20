@@ -19,7 +19,11 @@
             {% endif %}
         {% csrf_token %}
 <!--        {{ form.as_table }}-->
-        {{ form.media }}
+            {{ personform.media }}
+            {{ addressform.media }}
+            {{ phoneform.media }}
+            {{ testform.media }}
+            {{ assignform.media }}
         {% include 'add-new-patient-info.html' %}
         {% include 'add-new-patient-contact-info.html' %}
         {% include 'add-new-testing-information.html' %}

@@ -9,25 +9,27 @@
                     <div class="col-md-10">
 <!--                        <div class="card">-->
                             <div class="card-body align-items-center">
+                                {{ personform.management_form }}
+                                {{ personform.media }}
                                 <div class="row">
                                     <div class="input-group col-sm-2">
-                                        <label for='{{ form.first }}' class="">First</label>
-                                        {{ form.first }}
+                                        <label for='{{ personform.first }}' class="">First</label>
+                                        {{ personform.first }}
                                     </div>
                                     <div class="col-sm-1"></div>
                                     <div class="input-group col-sm-2">
-                                        <label for='{{ form.mi }}' class="">MI</label>
-                                        {{ form.mi }}
+                                        <label for='{{ personform.mi }}' class="">MI</label>
+                                        {{ personform.mi }}
                                     </div>
                                     <div class="col-sm-1"></div>
                                     <div class="input-group col-sm-2">
-                                        <label for='{{ form.last }}' class="">Last</label>
-                                        {{ form.last }}
+                                        <label for='{{ personform.last }}' class="">Last</label>
+                                        {{ personform.last }}
                                     </div>
                                     <div class="col-sm-1"></div>
                                     <div class="form-group col-sm-1">
-                                        <label for='{{ form.suffix }}' class="">Suffix</label>
-                                        {{ form.suffix }}
+                                        <label for='{{ personform.suffix }}' class="">Suffix</label>
+                                        {{ personform.suffix }}
                                     </div>
                                 </div>
                             </div>
@@ -36,12 +38,12 @@
                             <div class="card-body align-items-center">
                                 <div class="row">
                                     <div class="form-group col">
-                                        <label for='{{ form.sex }}' class="">Sex</label>
-                                        {{ form.sex }}
+                                        <label for='{{ personform.sex }}' class="">Sex</label>
+                                        {{ personform.sex }}
                                     </div>
                                     <div class="input-group col">
-                                        <label for='{{ form.dob }}' class="">Date of Birth</label>
-                                        {{ form.dob }}
+                                        <label for='{{ personform.dob }}' class="">Date of Birth</label>
+                                        {{ personform.dob }}
                                     </div>
                                 </div>
                             </div>

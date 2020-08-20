@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content2 %}
+
+<form method="post">
+    {% include 'add-new-patient-info.html' %}
+    {% include 'case edit/address-edit.html' %}
+    {% include 'add-new-testing-information.html' %}
+    {% include 'case edit/case-form.html' %}
+    {% include 'symptom-log.html' %}
+    <div class="button"><input type="submit" value="Save"></div>
+</form>
+
+
+{% endblock %}

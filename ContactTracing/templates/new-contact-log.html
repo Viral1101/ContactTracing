@@ -1,0 +1,78 @@
+{% load crispy_forms_tags %}
+{% load tracing_extras %}
+<div class="form-row">
+            <div class="">
+                <div class="card flex-row">
+                    <div class="card-header col-md-2">
+                        <div class="row align-items-center">
+                            <h5 class="card-title">Contact Log</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-10">
+<!--                        <div class="card">-->
+                            <div class="card-body align-items-center" id="contact_form_set">
+                                {{ contactforms.management_form|crispy }}
+                                {{ contactaddressforms.management_form|crispy }}
+                                {{ contactphoneforms.management_form|crispy }}
+                                {{ contactpersonforms.management_form|crispy }}
+                                {{ contactsymptomforms.management_form|crispy }}
+                                {% for contactform, contactpersonform in contactforms|zip:contactpersonforms %}
+                                <div class="card">
+                                    {% crispy contactpersonform contactpersonhelper %}
+                                    {% for contactaddressform, contactphoneform in contactaddressforms|zip:contactphoneforms %}
+                                        {% crispy contactaddressform contactaddresshelper %}
+                                        {% crispy contactphoneform contactphonehelper %}
+                                    {% endfor %}
+                                    {% crispy contactform contactformhelper %}
+
+                                    {% for contactsymptomform in contactsymptomforms %}
+                                    <div id="contact_symptom_main">
+                                        {% crispy contactsymptomform symptomloghelper %}
+                                    </div>
+                                    {% endfor %}
+                                    <input type="button" value="Add Contact Symptom" id="add_more_contact_symptom_main">
+                                    <div id="empty_contact_symptom_main" style="display:none">
+                                        {% crispy contactsymptomforms.empty_form symptomloghelper %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="button" value="Add More" id="add_more_contact">
+                            <div id="empty_contact_form" style="display:none">
+                                <div class="card">
+                                    {% crispy contactpersonforms.empty_form contactpersonhelper %}
+                                    {% crispy contactaddressforms.empty_form contactaddresshelper %}
+                                    {% crispy contactphoneforms.empty_form contactphonehelper %}
+                                    {% crispy contactforms.empty_form contactformhelper %}
+                                    <div id="contact_symptom">
+                                    {% crispy contactsymptomforms.empty_form symptomloghelper %}
+                                    </div>
+                                    <input type="button" value="Add Contact Symptom" id="add_more_contact_symptom">
+                                    <div id="empty_contact_symptom" style="display:none">
+                                        {% crispy contactsymptomforms.empty_form symptomloghelper %}
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+<script>
+    $('#add_more_contact').click(function() {
+	var form_idx = $('#id_form-TOTAL_FORMS').val();
+	$('#contact_form_set').append($('#empty_contact_form').html().replace(/__prefix__/g, form_idx));
+	$('#id_form-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#add_more_contact_symptom').click(function() {
+	var form_idx = $('#id_form-TOTAL_FORMS').val();
+	$('#contact_symptom').append($('#empty_contact_symptom').html().replace(/__prefix__/g, form_idx));
+	$('#id_form-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#add_more_contact_symptom_main').click(function() {
+	var form_idx = $('#id_form-TOTAL_FORMS').val();
+	$('#contact_symptom_main').append($('#empty_contact_symptom_main').html().replace(/__prefix__/g, form_idx));
+	$('#id_form-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+</script>

@@ -15,6 +15,7 @@ class Addresses(models.Model):
     city = models.TextField(blank=True, null=True)
     state = models.CharField(max_length=2, blank=True, null=True)
     post_code = models.CharField(max_length=5, blank=True, null=True)
+    people = models.ManyToManyField('Addresses', through='PersonAddressJoin')
 
     class Meta:
         # managed = False
@@ -46,6 +47,7 @@ class Addresses(models.Model):
                 }
         output = '{street}{street2}{city}, {state} {zip}'.format(**data)
         return output
+
 
 class AssignmentType(models.Model):
     assign_type_id = models.AutoField(primary_key=True)
@@ -183,14 +185,14 @@ class CaseSxJoin(models.Model):
 class Cases(models.Model):
     case_id = models.AutoField(primary_key=True)
     person = models.ForeignKey('Persons', models.DO_NOTHING)
-    test_id = models.IntegerField(blank=True, null=True)
+    test = models.ForeignKey('Tests', models.DO_NOTHING)
     confirmed = models.IntegerField(blank=True, null=True)
     status = models.ForeignKey('Statuses', models.DO_NOTHING)
     tent_release = models.DateField(blank=True, null=True)
     iso_pcp = models.BooleanField(blank=True, null=True)
     reqs_pcp = models.TextField(blank=True, null=True)
     release_date = models.DateField(blank=True, null=True)
-    next_follow = models.DateField(blank=True, null=True)
+    last_follow = models.DateField(blank=True, null=True)
     rel_pcp = models.BooleanField(blank=True, null=True)
     active = models.BooleanField()
     released = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
@@ -244,6 +246,7 @@ class Contacts(models.Model):
     tent_qt_end = models.DateField(blank=True, null=True)
     status = models.ForeignKey('Statuses', models.DO_NOTHING)
     last_follow = models.DateField(blank=True, null=True)
+    # next_follow = models.DateField(blank=True, null=True)
     active = models.BooleanField()
     old_contact_no = models.TextField(blank=True, null=True)
     last_exposure = models.DateField(blank=True, null=True)
@@ -325,7 +328,7 @@ class ExternalCases(models.Model):
     active = models.IntegerField()
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'external_cases'
 
 
@@ -336,7 +339,7 @@ class ExternalSources(models.Model):
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'external_sources'
 
 
@@ -346,7 +349,7 @@ class OutbreakCaseJoin(models.Model):
     outbreak_id = models.IntegerField()
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'outbreak_case_join'
 
 
@@ -356,7 +359,7 @@ class OutbreakContactJoin(models.Model):
     contact_id = models.IntegerField()
 
     class Meta:
-        managed = False
+        # managed = False
         db_table = 'outbreak_contact_join'
 
 
@@ -367,18 +370,8 @@ class Outbreaks(models.Model):
     active = models.IntegerField()
 
     class Meta:
-        managed = False
-        db_table = 'outbreaks'
-
-
-class PersonAddressJoin(models.Model):
-    join_id = models.AutoField(primary_key=True)
-    person = models.ForeignKey('Persons', models.DO_NOTHING, blank=True, null=True)
-    address = models.ForeignKey('Addresses', models.DO_NOTHING, blank=True, null=True)
-
-    class Meta:
         # managed = False
-        db_table = 'person_address_join'
+        db_table = 'outbreaks'
 
 
 class PersonEmailJoin(models.Model):
@@ -413,13 +406,24 @@ class PersonPhoneJoin(models.Model):
         db_table = 'person_phone_join'
 
 
+class Phones(models.Model):
+    phone_id = models.AutoField(primary_key=True)
+    phone_number = models.CharField(max_length=11)
+
+    class Meta:
+        # managed = False
+        db_table = 'phones'
+
+
 class Persons(models.Model):
     person_id = models.AutoField(primary_key=True)
     first = models.TextField()
     last = models.TextField()
     mi = models.CharField(max_length=5, blank=True, null=True)
     suffix = models.CharField(max_length=10, blank=True, null=True)
-    address = models.ForeignKey(PersonAddressJoin, models.DO_NOTHING, blank=True, null=True)
+    # address = models.ForeignKey(PersonAddressJoin, models.DO_NOTHING, blank=True, null=True)
+    addys = models.ManyToManyField('Addresses', through='PersonAddressJoin')
+    phones = models.ManyToManyField(Phones, through='PersonPhoneJoin')
     sex = models.CharField(max_length=1, blank=True, null=True)
     dob = models.DateField(blank=True, null=True)
     age = models.IntegerField(blank=True, null=True)
@@ -433,24 +437,34 @@ class Persons(models.Model):
         db_table = 'persons'
 
     def __str__(self):
+
+        if self.sex is None:
+            sex = "Unknown"
+        elif self.sex == 'F' or self.sex == '0':
+            sex = "Female"
+        else:
+            sex = "Male"
+
         data = {'first': self.first,
                 'mi': '' if self.mi is None else self.mi + ' ',
                 'last': self.last,
                 'suffix': '' if self.suffix is None else ' ' + self.suffix + ' ',
                 'dob': self.dob,
                 'age': self.age,
-                'sex': self.sex}
+                'sex': sex}
         output = '[{first} {mi}{last}{suffix}] DOB: {dob}, Age: {age}, Sex: {sex}'.format(**data)
         return output
 
 
-class Phones(models.Model):
-    phone_id = models.AutoField(primary_key=True)
-    phone_number = models.CharField(max_length=11)
+class PersonAddressJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey(Persons, models.DO_NOTHING, blank=True, null=True, related_name='people')
+    address = models.ForeignKey(Addresses, models.DO_NOTHING, blank=True, null=True, related_name='addys')
+    # address = models.ManyToManyField(Persons, through="self")
 
     class Meta:
         # managed = False
-        db_table = 'phones'
+        db_table = 'person_address_join'
 
 
 class Roles(models.Model):
@@ -495,6 +509,7 @@ class SxLog(models.Model):
     sx_state = models.ForeignKey(SxStates, models.DO_NOTHING)
     rec_date = models.DateField(blank=True, null=True)
     user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    symptom = models.ForeignKey('SymptomDefs', models.DO_NOTHING)
 
     class Meta:
         # managed = False

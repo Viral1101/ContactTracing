@@ -1,0 +1,32 @@
+{% load crispy_forms_tags %}
+<div class="form-row">
+            <div class="">
+                <div class="card flex-row">
+                    <div class="card-header col-md-2">
+                        <div class="row align-items-center">
+                            <h5 class="card-title">Symptoms</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-10">
+<!--                        <div class="card">-->
+                            <div class="card-body align-items-center" id="form_set">
+                                {{ symptomlogforms.management_form|crispy }}
+                                {% for symptomlogform in symptomlogforms %}
+                                    {% crispy symptomlogform %}
+                                {% endfor %}
+                            </div>
+                            <input type="button" value="Add More" id="add_more">
+                            <div id="empty_form" style="display:none">
+                                    {% crispy symptomlogforms.empty_form %}
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+<script>
+    $('#add_more').click(function() {
+	var form_idx = $('#id_form-TOTAL_FORMS').val();
+	$('#form_set').append($('#empty_form').html().replace(/__prefix__/g, form_idx));
+	$('#id_form-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+</script>

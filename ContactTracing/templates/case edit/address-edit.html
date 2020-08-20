@@ -7,10 +7,9 @@
                 </div>
             </div>
             <div class="col-md-10">
-    <!--                        <div class="card">-->
                     <div class="card-body align-items-center">
                         {{ addressform.management_form }}
-                        {{ addressform.media }}
+                        {% for addressform in addressforms %}
                         <div class="row">
                             <div class="input-group col-sm-2">
                                 <label for='{{ addressform.street }}' class="">Address</label>
@@ -41,19 +40,18 @@
                             </div>
                         </div>
                     </div>
-    <!--                        </div>-->
-    <!--                        <div class="card">-->
+                    {% endfor %}
                     <div class="card-body align-items-center">
                         {{ phoneform.management_form }}
-                        {{ phoneform.media }}
+                        {% for phoneform in phoneforms %}
                         <div class="row">
                             <div class="form-group col-sm-2">
                                 <label for='{{ phoneform.phone_number }}' class="">Phone Number</label>
                                 {{ phoneform.phone_number }}
                             </div>
                         </div>
+                        {% endfor %}
                     </div>
-    <!--                        </div>-->
             </div>
         </div>
     </div>

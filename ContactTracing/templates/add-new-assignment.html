@@ -8,15 +8,16 @@
             </div>
             <div class="col-md-10">
                 <div class="card-body align-items-center">
+                    {{ assignform.management_form }}
                     <div class="row">
                         <div class="input-group col-md-5">
-                            <label for='{{ form.assign_to }}' class="">User</label>
-                            {{ form.assign_to }}
+                            <label for='{{ assignform.user }}' class="">User</label>
+                            {{ assignform.user }}
                         </div>
                         <div class="col-md-2"></div>
                         <div class="input-group col-md-5">
-                            <label for='{{ form.assignment_type }}' class="">Assignment Type</label>
-                            {{ form.assignment_type }}
+                            <label for='{{ assignform.assign_type }}' class="">Assignment Type</label>
+                            {{ assignform.assign_type }}
                         </div>
                     </div>
                 </div>

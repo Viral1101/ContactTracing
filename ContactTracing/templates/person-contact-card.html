@@ -4,12 +4,14 @@
         <h5 class="card-title">Address</h5>
       </div>
       <div class="card-body">
-          {% if case.person.address %}
-          <p class="card-text">{{ case.person.address.street }}</br>
-          {% if case.person.address.street2 %}
-            {{ case.person.address.street2 }}</br>
+          {% if addresses %}
+          {% for address in addresses %}
+          <p class="card-text">{{ address.address.street }}</br>
+          {% if address.address.street2 %}
+            {{ address.address.street2 }}</br>
           {% endif %}
-          {{ case.person.address.city }}, {{ case.person.address.state }} {{ case.person.address.post_code }}</p>
+          {{ address.address.city }}, {{ address.address.state }} {{ address.address.post_code }}</p>
+          {% endfor %}
           {% endif %}
       </div>
     </div>
