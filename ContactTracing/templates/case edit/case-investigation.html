@@ -2,14 +2,42 @@
 
 {% block content2 %}
 
+    {% load crispy_forms_tags %}
+
 <form method="post">
-    {% include 'add-new-patient-info.html' %}
-    {% include 'case edit/address-edit.html' %}
-    {% include 'add-new-testing-information.html' %}
-    {% include 'case edit/case-form.html' %}
-    {% include 'symptom-log.html' %}
-    <div class="button"><input type="submit" value="Save"></div>
+    <div class="form-row">
+        <div class="button"><input type="submit" value="Save" /></div>
+    </div>
+
+    {% include 'temp.html' %}
+
+
 </form>
 
+<script>
+    $('#add_more').click(function() {
+	var form_idx = $('#id_form-TOTAL_FORMS').val();
+	$('#form_set').append($('#empty_form').html().replace(/__prefix__/g, form_idx));
+	$('#id_form-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_phone').click(function() {
+	var form_idx = $('#id_phone-TOTAL_FORMS').val();
+	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
+	$('#id_phone-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_address').click(function() {
+	var form_idx = $('#id_address-TOTAL_FORMS').val();
+	$('#div_id_address-'+(parseInt(form_idx)-1)+'-street').parent().parent().parent().append($('#empty_address').html().replace(/__prefix__/g, form_idx));
+	$('#id_address-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_symptom').click(function() {
+	var form_idx = $('#id_sxlog-TOTAL_FORMS').val();
+	$('#div_id_sxlog-'+(parseInt(form_idx)-1)+'-symptom').parent().parent().parent().append($('#empty_symptom').html().replace(/__prefix__/g, form_idx));
+	$('#id_sxlog-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+</script>
 
 {% endblock %}

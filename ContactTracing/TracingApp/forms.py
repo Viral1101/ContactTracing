@@ -8,7 +8,7 @@ from dateutil.relativedelta import relativedelta
 import datetime
 import re
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, Button
 
 
 class NewPhoneNumberForm(forms.ModelForm):
@@ -28,6 +28,113 @@ class NewPhoneNumberForm(forms.ModelForm):
                 min_id = min(min_id, phon.phone_id)
             self.cleaned_data['phone_id'] = min_id
             print(self.cleaned_data['phone_id'])
+
+
+class AddressesForm(forms.ModelForm):
+    street = forms.CharField(required=False)
+    street2 = forms.CharField(required=False)
+    city = forms.CharField(required=False)
+    state = forms.CharField(widget=USStateSelect, initial='MO', required=False)
+    post_code = forms.CharField(max_length=5, min_length=5, required=False)
+
+    def clean_post_code(self):
+        data = self.cleaned_data['post_code']
+
+        if not re.search('\d{5}$', data):
+            raise ValidationError(_('Invalid zip - Zip should be in the form #####'))
+
+        return data
+
+    class Meta:
+        model = Addresses
+        fields = ['street',
+                  'street2',
+                  'city',
+                  'state',
+                  'post_code',
+                  ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.form_tag = False
+        self.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('street', css_class='form-group col-md-5 mb-0'),
+                Column('street2', css_class='form-group col-md-5 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('city', css_class='form-group col-md-4 mb-0'),
+                Column('state', css_class='form-group col-md-3 mb-0'),
+                Column('post_code', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            )
+        )
+
+
+class AddressesFormHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        self.layout = Layout(
+            Div(
+                Row(
+                    Column('street', css_class='form-group col-md-5 mb-0'),
+                    Column('street2', css_class='form-group col-md-5 mb-0'),
+                    css_class='form-row'
+                ),
+                Row(
+                    Column('city', css_class='form-group col-md-4 mb-0'),
+                    Column('state', css_class='form-group col-md-3 mb-0'),
+                    Column('post_code', css_class='form-group col-md-4 mb-0'),
+                    css_class='form-row'
+                ),
+            )
+        )
+        self.render_required_fields = True
+        # self.add_input(Button('add_address', "Add Address", css_class='btn-info'))
+
+
+class PhoneForm(forms.ModelForm):
+    phone_number = forms.CharField(required=False)
+
+    class Meta:
+        model = Phones
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('phone_number', css_class='form-group col-md-5 mb-0'),
+                css_class='form-row'
+            )
+        )
+
+
+class PhoneFormHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        self.layout = Layout(
+            Row(
+                Column('phone_number', css_class='form-group col-md-10 mb-0'),
+                css_class='form-row'
+            )
+        )
+        self.render_required_fields = True
+        # self.add_input(Button('add_phone', "Add Phone", css_class='btn-info'))
 
 
 class NewAddressForm(forms.ModelForm):
@@ -101,9 +208,52 @@ class CaseInvestigation(forms.ModelForm):
 
 class PersonForm(forms.ModelForm):
 
+    first = forms.CharField()
+    mi = forms.CharField(max_length=2, required=False)
+    last = forms.CharField()
+
+    suff_options = [('', '---'),
+                    ('Jr', "Jr"),
+                    ('Sr', "Sr"),
+                    ('III', "III"),
+                    ('IV', "IV")]
+
+    suffix = forms.TypedChoiceField(choices=suff_options, coerce=str, required=False)
+
+    sexes = [('', '------'),
+             ('F', "Female"),
+             ('M', "Male")]
+
+    sex = forms.TypedChoiceField(choices=sexes, coerce=str)
+    dob = forms.DateField(widget=DatePickerInput(), required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('first', css_class='form-group col-md-4 mb-0'),
+                Column('mi', css_class='form-group col-md-2 mb-0'),
+                Column('last', css_class='form-group col-md-4 mb-0'),
+                Column('suffix', css_class='form-group col-md-2 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('sex', css_class='form-group col-md-2 mb-0'),
+                Column('dob', css_class='form-group col-md-4 mb-0'),
+                Column('age', css_class='form-group col-md-2 mb-0'),
+                css_class='form-row'
+            ),
+        )
+
     class Meta:
         model = Persons
-        fields = '__all__'
+        exclude = ['addys',
+                   'phones',
+                   ]
 
 
 class NewPersonForm(forms.ModelForm):
@@ -155,18 +305,19 @@ class NewPersonForm(forms.ModelForm):
         print(last)
         print(dob)
 
-        last_exists = Persons.objects.filter(last=last)
-        if last_exists:
-            print("last exists")
-            first_exists = last_exists.filter(first=first)
-            if first_exists:
-                print('first exists')
-                dob_exists = first_exists.filter(dob=dob)
-                if dob_exists:
-                    print('dob exists')
-                    msg = "Person already exists. Check First name, Last name, and Date of Birth. " \
-                          "Convert existing contact?"
-                    self.add_error('first', msg)
+        if not cleaned_data['pk']:
+            last_exists = Persons.objects.filter(last=last)
+            if last_exists:
+                print("last exists")
+                first_exists = last_exists.filter(first=first)
+                if first_exists:
+                    print('first exists')
+                    dob_exists = first_exists.filter(dob=dob)
+                    if dob_exists:
+                        print('dob exists')
+                        msg = "Person already exists. Check First name, Last name, and Date of Birth. " \
+                              "Convert existing contact?"
+                        self.add_error('first', msg)
         print("end clean")
         return cleaned_data
 
@@ -183,8 +334,8 @@ class NewPersonForm(forms.ModelForm):
 
 
 class CaseForm(forms.ModelForm):
-    active = forms.BooleanField()
-    confirmed = forms.BooleanField()
+    active = forms.BooleanField(required=False)
+    confirmed = forms.BooleanField(required=False)
     # last_follow = forms.DateField(widget=DatePickerInput())
     # release_date = forms.DateField(widget=DatePickerInput())
     # rel_pcp = forms.BooleanField()
@@ -201,6 +352,19 @@ class CaseForm(forms.ModelForm):
                    'tent_release',
                    ]
 
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Column('confirmed', css_class='form-group col-md-3 mb-0'),
+            Column('active', css_class='form-group col-md-3 mb-0'),
+            Column('status', css_class='form-group col-md-6 mb-0')
+        )
+
 
 class TraceLogForm(forms.ModelForm):
 
@@ -209,9 +373,13 @@ class TraceLogForm(forms.ModelForm):
         fields = ['notes',
                   ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
         self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
         self.layout = Layout(
             Column('notes', css_class='form-group col-md-4 mb-0'))
 
@@ -220,6 +388,8 @@ class PersonFormSetHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
         self.layout = Layout(
             Row(
                 Column('first', css_class='form-group col-md-4 mb-0'),
@@ -241,6 +411,8 @@ class ContactFormSetHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
         self.layout = Layout(
             Row(
                 Column('init_exposure', css_class='form-group col-md-4 mb-0'),
@@ -264,6 +436,8 @@ class SymptomLogSetHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
         self.layout = Layout(
             Div(
                 Div(
@@ -297,6 +471,8 @@ class SymptomLogForm(forms.ModelForm):
 
     start = forms.DateField(widget=DatePickerInput(), required=False)
     end = forms.DateField(widget=DatePickerInput(), required=False)
+    rec_date = forms.HiddenInput()
+    user = forms.HiddenInput()
 
     class Meta:
         model = SxLog
@@ -306,12 +482,18 @@ class SymptomLogForm(forms.ModelForm):
                   'end',
                   'note',
                   'alt_dx',
+                  'rec_date',
+                  'user',
                   ]
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        self.helper = FormHelper()
+        self.fields['user'].widget.attrs['readonly'] = True
+        self.fields['rec_date'].widget.attrs['readonly'] = True
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
         self.helper.layout = Layout(
             Div(
                 Div(
@@ -342,6 +524,7 @@ class SymptomLogForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         cleaned_data['rec_date'] = datetime.date.today()
+        cleaned_data['user'] = AuthUser.objects.get(id=self.user.id)
         return cleaned_data
 
 
@@ -377,7 +560,10 @@ class AddContactAddress(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
-        self.layout = Layout(
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
             Row(
                 Column('use_case_address', css_class='form-group col-md-5 mb-0'),
                 css_class='form-row'
@@ -435,7 +621,10 @@ class AddContactAddressHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
-        self.layout = Layout(
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
             Row(
                 Column('use_case_address', css_class='form-group col-md-5 mb-0'),
                 css_class='form-row'
@@ -466,7 +655,10 @@ class AddContactPhone(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
-        self.layout = Layout(
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
             Row(
                 Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
                 css_class='form-row'),
@@ -481,6 +673,8 @@ class AddContactPhoneHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
         self.layout = Layout(
             Row(
                 Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
@@ -515,7 +709,10 @@ class AddContactForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
-        self.layout = Layout(
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
             Row(
                 Column('init_exposure', css_class='form-group col-md-4 mb-0'),
                 Column('last_exposure', css_class='form-group col-md-4 mb-0'),
@@ -550,6 +747,9 @@ class NewTest(forms.ModelForm):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
         # self.logged_date = datetime.date.today()
 
     def clean_status(self):

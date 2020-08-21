@@ -1,0 +1,23 @@
+{% load crispy_forms_tags %}
+<div class="form-row">
+    <div class="">
+        <div class="card flex-row">
+            <div class="card-header col-md-2">
+                <div class="row align-items-center">
+                    <h5 class="card-title">Phone</h5>
+                </div>
+            </div>
+            <div class="col-md-10">
+                <div class="card-body align-items-center" id="phone_form_set">
+                    {{ phoneforms|crispy }}
+                </div>
+                <div class="button">
+                    <input type="button" value="Add More" id="add_more_phone" />
+                </div>
+                <div id="empty_phone_form" style="display:none">
+                        {% crispy phoneforms.empty_form phoneformhelper %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

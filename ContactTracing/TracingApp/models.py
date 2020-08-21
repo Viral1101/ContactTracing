@@ -169,7 +169,7 @@ class CaseLogJoin(models.Model):
 class CaseSxJoin(models.Model):
     join_id = models.AutoField(primary_key=True)
     case = models.ForeignKey('Cases', models.DO_NOTHING)
-    sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
+    sx = models.ForeignKey('SxLog', models.DO_NOTHING)
 
     class Meta:
         # managed = False
@@ -500,6 +500,18 @@ class SxStates(models.Model):
         return self.sx_state
 
 
+class SymptomDefs(models.Model):
+    symptom_id = models.AutoField(primary_key=True)
+    symptom = models.TextField(blank=True, null=True)
+
+    class Meta:
+        # managed = False
+        db_table = 'symptom_defs'
+
+    def __str__(self):
+        return self.symptom
+
+
 class SxLog(models.Model):
     log_id = models.AutoField(primary_key=True)
     start = models.DateField(blank=True, null=True)
@@ -509,7 +521,7 @@ class SxLog(models.Model):
     sx_state = models.ForeignKey(SxStates, models.DO_NOTHING)
     rec_date = models.DateField(blank=True, null=True)
     user = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    symptom = models.ForeignKey('SymptomDefs', models.DO_NOTHING)
+    symptom = models.ForeignKey(SymptomDefs, models.DO_NOTHING)
 
     class Meta:
         # managed = False
@@ -539,18 +551,6 @@ class SxLogJoin(models.Model):
                 'log': self.sx_log}
         output = '{symptom} {log}'.format(**data)
         return output
-
-
-class SymptomDefs(models.Model):
-    symptom_id = models.AutoField(primary_key=True)
-    symptom = models.TextField(blank=True, null=True)
-
-    class Meta:
-        # managed = False
-        db_table = 'symptom_defs'
-
-    def __str__(self):
-        return self.symptom
 
 
 class Symptoms(models.Model):

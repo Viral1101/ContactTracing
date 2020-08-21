@@ -1,0 +1,19 @@
+{% load crispy_forms_tags %}
+<div class="form-row">
+    <div class="">
+        <div class="card flex-row">
+            <div class="card-header col-md-2">
+                <div class="row align-items-center">
+                    <h5 class="card-title">Patient Information</h5>
+                </div>
+            </div>
+            <div class="col-md-10">
+                <div class="card-body">
+                        {{ personform.management_form|crispy }}
+                        {{ personform.media }}
+                        {% crispy personform %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

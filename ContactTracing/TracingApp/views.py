@@ -71,10 +71,10 @@ def contacts(request):
 @login_required(login_url='/accounts/login/')
 def info(request, cttype, pid):
     if cttype == "C":
-        data = Cases.objects.filter(case_id=pid).first()
+        data = Cases.objects.get(case_id=pid)
         in_contacts = CaseContactJoin.objects.filter(case=data)
-        sxs = CaseSxJoin.objects.filter(case=data).first()
-        logs = CaseLogJoin.objects.filter(case=data).first()
+        sxs = CaseSxJoin.objects.filter(case=data)
+        logs = CaseLogJoin.objects.filter(case=data)
         in_name = 'Case'
         last_exposure = None
         contacts_logs = ContactLogJoin.objects.\
@@ -100,8 +100,10 @@ def info(request, cttype, pid):
 
     if sxs:
         sx_ids = sxs.values('sx_id')
-        symptoms = SxLogJoin.objects.filter(sx_id__in=sx_ids)
-        sx_logs = SxLog.objects.filter(log_id__in=symptoms)
+        # symptoms = SxLogJoin.objects.filter(sx_id__in=sx_ids)
+        # sx_logs = SxLog.objects.filter(log_id__in=symptoms)
+        symptoms = SxLog.objects.filter(log_id__in=sx_ids)
+        sx_logs = symptoms
     else:
         sx_ids = None
         symptoms = None
@@ -122,11 +124,11 @@ def info(request, cttype, pid):
 
     addresses = PersonAddressJoin.objects.filter(person_id=person_id)
 
-    if sx_logs is not None:
+    if symptoms is not None:
         print("This should be none for this test")
         first_sx = datetime.date.today()
-        for sx_log in sx_logs:
-            first_sx = min(first_sx, sx_log.start)
+        for symptom in symptoms:
+            first_sx = min(first_sx, symptom.start)
     else:
         first_sx = None
     # print(symptoms)
@@ -138,7 +140,7 @@ def info(request, cttype, pid):
 
     return render(request, 'tracing-info.html', {'case': data,
                                                  'contacts': in_contacts,
-                                                 'symptoms': symptoms,
+                                                 'symptoms': sx_logs,
                                                  'logs': logs,
                                                  'type': cttype,
                                                  'name': in_name,
@@ -320,55 +322,65 @@ def case_investigation(request, cttype, pid):
     case = get_object_or_404(Cases, case_id=pid)
     person = get_object_or_404(Persons, person_id=case.person_id)
     test = get_object_or_404(Tests, test_id=case.test_id)
-    log = TraceLogs()
+    log = TraceLogs(request.user)
     addressesJoins = PersonAddressJoin.objects.filter(person=person)
     addresses = Addresses.objects.filter(address_id__in=addressesJoins.values('address_id'))
 
-    addressformset = modelformset_factory(Addresses,  form=NewAddressForm, extra=0)
-    phoneformset = modelformset_factory(Phones, form=NewPhoneNumberForm, extra=0)
+    AddressFormSet = modelformset_factory(Addresses,  form=AddressesForm, extra=0)
+    PhoneFormSet = modelformset_factory(Phones, form=PhoneForm, extra=0)
 
-    symptomformset = modelformset_factory(Symptoms, form=SymptomForm, extra=1)
-    symptomlogformset = modelformset_factory(SxLog, form=SymptomLogForm, extra=1)
+    SymptomFormSet = modelformset_factory(Symptoms, form=SymptomForm, extra=1)
+    SymptomLogFormSet = modelformset_factory(SxLog, form=SymptomLogForm, extra=1)
     symptomloghelper = SymptomLogSetHelper()
+
+    addressformhelper = AddressesFormHelper()
+    phoneformhelper = PhoneFormHelper()
 
     if request.method == "POST":
         print("POST")
 
-        caseform = CaseForm(request.POST, instance=case)
-        personform = NewPersonForm(request.POST, instance=person)
+        caseform = CaseForm(request.user, request.POST, instance=case)
+        personform = PersonForm(request.POST, instance=person)
         testform = NewTest(request.user, request.POST, instance=test)
         logform = TraceLogForm(request.user, request.POST, instance=log)
 
         queryset = PersonAddressJoin.objects.filter(person_id=case.person_id)
-        addressforms = addressformset(request.POST, queryset=Addresses.objects.filter(address_id__in=queryset.values('address_id')))
+        addressforms = AddressFormSet(request.POST, prefix='address')
 
         phonequery = PersonPhoneJoin.objects.filter(person_id=case.person_id)
-        phoneforms = phoneformset(request.POST, queryset=Phones.objects.filter(phone_id__in=phonequery.values('phone_id')))
-        symptomforms = symptomformset(request.POST)
-        symptomlogforms = symptomlogformset(request.user, request.POST)
+        phoneforms = PhoneFormSet(request.POST, prefix='phone')
+        symptomforms = SymptomFormSet(request.POST, prefix='symptom')
+        symptomlogforms = SymptomLogFormSet(request.POST, form_kwargs={'user': request.user}, prefix='sxlog')
+
+        print("Case: %s | Person: %s | Address: %s | Phone: %s | Test: %s | Sx: %s" % (caseform.is_valid(),
+                                                                                       personform.is_valid(),
+                                                                                       addressforms.is_valid,
+                                                                                       phoneforms.is_valid,
+                                                                                       testform.is_valid(),
+                                                                                       symptomlogforms.is_valid))
 
         if caseform.is_valid() \
                 and personform.is_valid()\
                 and testform.is_valid()\
                 and addressforms.is_valid()\
                 and phoneforms.is_valid() \
-                and symptomforms.is_valid():
+                and symptomlogforms.is_valid():
 
             this_person = personform.save(commit=False)
 
             for addressform in addressforms:
                 if addressform.is_valid():
-                    this_address = addressform.save(commit=False)
+                    this_address = addressform.save()
                     person_address = PersonAddressJoin(person=this_person, address=this_address)
                     person_address.save()
-                    this_address.save()
+                    # this_address.save()
 
             for phoneform in phoneforms:
                 if phoneform.is_valid():
-                    this_phone = phoneform.save(commit=False)
+                    this_phone = phoneform.save()
                     person_phone = PersonPhoneJoin(person=this_person, phone=this_phone)
                     person_phone.save()
-                    this_phone.save()
+                    # this_phone.save()
 
             this_test = testform.save(commit=False)
 
@@ -378,8 +390,8 @@ def case_investigation(request, cttype, pid):
 
             for symptomlogform in symptomlogforms:
                 if symptomlogform.is_valid():
-                    symptomlogform.cleaned_data['case'] = this_case
-                    symptomlogform.save()
+                    this_symptom = symptomlogform.save()
+                    CaseSxJoin(case=this_case, sx=this_symptom).save()
 
             this_test.save()
             this_person.save()
@@ -388,26 +400,28 @@ def case_investigation(request, cttype, pid):
             return redirect('assignments')
 
     else:
-        personform = NewPersonForm(instance=person)
+        personform = PersonForm(instance=person)
         testform = NewTest(request.user, instance=test)
 
         queryset = PersonAddressJoin.objects.filter(person_id=case.person_id)
-        addressforms = addressformset(queryset=Addresses.objects.filter(address_id__in=queryset.values('address_id')))
+        addressforms = AddressFormSet(queryset=Addresses.objects.filter(address_id__in=queryset.values('address_id')), prefix='address')
         phonequery = PersonPhoneJoin.objects.filter(person_id=case.person_id)
-        phoneforms = phoneformset(queryset=Phones.objects.filter(phone_id__in=phonequery.values('phone_id')))
-        caseform = CaseForm(instance=case)
+        phoneforms = PhoneFormSet(queryset=Phones.objects.filter(phone_id__in=phonequery.values('phone_id')), prefix='phone')
+        caseform = CaseForm(request.user, instance=case)
         logform = TraceLogForm(request.user, instance=log)
 
-        symptomforms = symptomformset(queryset=Symptoms.objects.none())
-        symptomlogforms = symptomlogformset(request.user, queryset=SxLog.objects.none())
+        symptomforms = SymptomFormSet(queryset=Symptoms.objects.none())
+        symptomlogforms = SymptomLogFormSet(queryset=SxLog.objects.none(), form_kwargs={'user': request.user}, prefix='sxlog')
 
     return render(request, 'case edit/case-investigation.html', {'caseform': caseform,
                                                                  'personform': personform,
                                                                  'addressforms': addressforms,
+                                                                 'addressformhelper': addressformhelper,
                                                                  'phoneforms': phoneforms,
+                                                                 'phoneformhelper': phoneformhelper,
                                                                  'testform': testform,
                                                                  'symptomforms': symptomforms,
                                                                  'symptomlogforms': symptomlogforms,
                                                                  'symptomloghelper': symptomloghelper,
-                                                                 'logform': logform,
+                                                                 # 'logform': logform,
                                                                  })
