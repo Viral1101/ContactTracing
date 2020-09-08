@@ -11,4 +11,7 @@ urlpatterns = [
     path('new-case', views.new_case, name='new-case'),
     path('test', views.new_person, name='test'),
     path('investigate/<str:cttype>/<int:pid>', views.case_investigation, name='case-investigation'),
+    path('add-contact/<str:cttype>/<int:pid>', views.add_contact, name='add-contact'),
+    path('follow-up/<str:cttype>/<int:pid>', views.followup, name='follow-up'),
+    path('assign', views.assign_contacts_cases, name='assign'),
 ]

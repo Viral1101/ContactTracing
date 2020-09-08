@@ -1,14 +1,13 @@
 <div class="card-group">
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title">{% if type == 'Contact' %}Linked Cases{% else %}Contacts{% endif %}</h5>
+            <h5 class="card-title">{% if type == 'CT' %}Linked Cases{% else %}Contacts{% endif %}</h5>
         </div>
-    </div>
-</div>
-{% if contacts %}
+        {% if contacts %}
     {% for contact in contacts %}
 <div class="card">
     <div class="card-header" style="transform: rotate(0);">
+        {% if type == 'C' %}
         <h6 class="card-title"><a class="stretched-link"
                                href="/TracingApp/info/CT/{{ contact.contact_id }}">CT{{ contact.contact_id }} /
                                 {{ contact.contact.person.first }}
@@ -18,27 +17,45 @@
                                 {{ contact.contact.person.dob }}{% elif contact.contact.person.age %} / {{ contact.contact.person.age }}{% endif %} /
                                 <i>{{ contact.relation_to_case }}</i>
                             </a></h6>
+        {% else %}
+        <h6 class="card-title"><a class="stretched-link"
+                               href="/TracingApp/info/C/{{ contact.case_id }}">C{{ contact.case_id }} /
+                                {{ contact.case.person.first }}
+                                {% if contact.case.person.mi %} {{ contact.case.person.mi }}
+                                {% endif %} {{ contact.case.person.last}}{% if contact.case.person.suffix %}
+                                {{ contact.case.person.suffix }}{% endif %}{% if contact.case.person.dob %} /
+                                {{ contact.case.person.dob }}{% elif contact.case.person.age %} / {{ contact.case.person.age }}{% endif %} /
+                                <i>{{ contact.relation_to_case }}</i>
+                            </a></h6>
+        {% endif %}
     </div>
     <div class="card-body">
         <div class="row">
             <div class="card col-sm-2 p-0">
                 <ul class="list-group">
+                    {% if type == 'C' %}
                   <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">Last Exp: {{ contact.contact.last_exposure }}</li>
                   <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">QT End: {{ contact.contact.tent_qt_end }}</li>
-                  <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">Last Follow-up: {{ contact.contact.next_follow }}</li>
+                  <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">Last Follow-up: {{ contact.contact.last_follow }}</li>
                   <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">{{ contact.contact.status.status }}</li>
+                    {% else %}
+                  <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Isolating by PCP: {{ contact.case.iso_pcp }}</li>
+                  <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Tentative: {{ contact.case.tent_rel }}</li>
+                  <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Released: {{ contact.case.release_date }}</li>
+                  <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">{{ contact.case.status.status }}</li>
+                    {% endif %}
                 </ul>
             </div>
             <div class="card col-sm-4 p-0" style="overflow-y: scroll;">
                 {% if ct_symptoms %}
                 {% for ct_symptom in ct_symptoms %}
-                {% if ct_symptom.case_id == contact.contact_id and type == 'Case' %}
+                {% if ct_symptom.case_id == contact.contact_id and type == 'C' %}
                 <div class="card-header">
-                    <h6 class="card-title">{{ ct_symptom.sx.symptom }}</h6>
+                    <h6 class="card-title">{{ ct_symptom.sx.symptom }} - Start: {{ ct_symptom.sx.start }}</h6>
                 </div>
-                {% elif ct_symptom.case_id == contact.case_id and type == 'Contact' %}
+                {% elif ct_symptom.case_id == contact.case_id and type == 'CT' %}
                 <div class="card-header">
-                    <h6 class="card-title">{{ ct_symptom.sx.symptom }}</h6>
+                    <h6 class="card-title">{{ ct_symptom.sx.symptom }} - Start: {{ ct_symptom.sx.start }}</h6>
                 </div>
                 {% endif %}
                 <div class="card-body">
@@ -52,7 +69,7 @@
                             <div class="card">{{ ct_symptom_log.sx_log.sx_state }}</div>
                             <div class="card">{{ ct_symptom_log.sx_log.note }}</div>
                             <div class="card">st:{{ ct_symptom_log.sx_log.start }}</div>
-                            <div class="card">end:{{ ct_symptom_log.sx_log.ende }}</div>
+                            <div class="card">end:{{ ct_symptom_log.sx_log.end }}</div>
                         </div>
                     </div>
 
@@ -70,7 +87,7 @@
             <div class="card col-sm-6 p-0">
                 {% if ct_logs %}
                 {% for ct_log in ct_logs %}
-                {% if ct_log %}
+                {% if ct_log.contact == contact.contact or ct_log.case_id == contact.case_id %}
                 <div class="card-header">
                     <h6 class="card-title">{{ ct_log.log.log_date }} - {{ ct_log.log.user.first_name }} {{ ct_log.log.user.last_name }}</h6>
                 </div>
@@ -95,3 +112,6 @@
     <p class="card-text">No Contacts reported.</p>
 </div>
 {% endif %}
+    </div>
+</div>
+

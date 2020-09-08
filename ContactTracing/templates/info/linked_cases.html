@@ -1,0 +1,50 @@
+{% if upstream_cases %}
+<h5>Cases that Exposed this Case:</h5>
+<table class="table">
+    <thead class="thead-light">
+        <tr>
+            <th>Case Id</th>
+            <th>Name</th>
+            <th>Confirmed Positive</th>
+            <th>Status</th>
+            <th>Release Date</th>
+            <th>Last Exposure Date</th>
+        </tr>
+    </thead>
+    {% for upstream in upstream_cases %}
+    <tr>
+        <td><a href="/TracingApp/info/C/{{ upstream.exposing_case.case_id }}">C{{ upstream.exposing_case.case_id }}</a></td>
+        <td>{{ upstream.exposing_case.person.first }} {{ upstream.exposing_case.person.last }}</td>
+        <td>{% if upstream.exposing_case.confirmed > 0 %}Confirmed{% else %}Uncomfirmed/Probable{% endif %}</td>
+        <td>{{ upstream.exposing_case.status.status }}</td>
+        <td>{% if upstream.exposing_case.release_date %}{{ upstream.exposing_case.release_date }}{% else %}N/A{% endif %}</td>
+        <td>{{ upstream.developed_contact.last_exposure }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% if downstream_cases %}
+<h5>Cases Exposed by this Case:</h5>
+<table class="table">
+    <thead class="thead-light">
+        <tr>
+            <th>Case Id</th>
+            <th>Name</th>
+            <th>Confirmed Positive</th>
+            <th>Status</th>
+            <th>Release Date</th>
+            <th>Last Exposure Date</th>
+        </tr>
+    </thead>
+    {% for downstream in downstream_cases %}
+    <tr>
+        <td><a href="/TracingApp/info/C/{{ downstream.developed_case.case_id }}">C{{ downstream.developed_case.case_id }}</a></td>
+        <td>{{ downstream.developed_case.person.first }} {{ downstream.developed_case.person.last }}</td>
+        <td>{{ downstream.developed_case.confirmed }}</td>
+        <td>{{ downstream.developed_case.status.status }}</td>
+        <td>{{ downstream.developed_case.release_date }}</td>
+        <td>{{ downstream.developed_contact.last_exposure }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}

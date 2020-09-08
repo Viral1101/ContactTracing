@@ -35,6 +35,24 @@
         {% endif %}
       </div>
     </div>
+    <div class="card">
+      <div class="card-header">
+            <h5 class="card-title">Email</h5>
+      </div>
+      <div class="card-body">
+        {% if emails %}
+        <ul class="list-group list-group-flush">
+        {% for email in emails %}
+            {% if email.person_id == case.person_id %}
+            <li class="list-group-item">
+                <a href="mailto:{{ email.email.email_address }}">{{ email.email.email_address }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
     {% if case.person.pronunciation %}
     <div class="card">
       <div class="card-header">
@@ -45,7 +63,7 @@
       </div>
     </div>
     {% endif %}
-    {% if case.next_follow <= today and case.active %}
+    {% if case.last_follow <= followup_day and case.active %}
     <div class="card text-white bg-danger">
         {% else %}
     <div class="card border-success">
@@ -54,12 +72,12 @@
             <h5 class="card-title">Follow-up</h5>
       </div>
       <div class="card-body">
-          {% if case.next_follow <= today and case.active %}
+          {% if case.last_follow <= followup_day and case.active %}
           <p class="card-text">
               {% else %}
           <p class="card-text text-success">
           {% endif %}
-              {{ case.next_follow }}</p>
+              {{ case.last_follow }}</p>
       </div>
     </div>
 </div>

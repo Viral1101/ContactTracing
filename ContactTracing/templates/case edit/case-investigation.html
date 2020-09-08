@@ -5,13 +5,16 @@
     {% load crispy_forms_tags %}
 
 <form method="post">
+
+    {% include 'case edit/investigation-forms.html' %}
+
+    <p></p>
     <div class="form-row">
-        <div class="button"><input type="submit" value="Save" /></div>
+        <input class="btn btn-primary" type="submit" name="save_and_exit" value="Save and exit" />
     </div>
-
-    {% include 'temp.html' %}
-
-
+    <div class="form-row">
+        <input class="btn btn-primary" type="submit" name="save_and_add_contacts" value="Save and Add Contacts" />
+    </div>
 </form>
 
 <script>
@@ -23,8 +26,14 @@
 
     $('#button-id-add_phone').click(function() {
 	var form_idx = $('#id_phone-TOTAL_FORMS').val();
-	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
+	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').parent().parent().parent().append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
 	$('#id_phone-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_email').click(function() {
+	var form_idx = $('#id_email-TOTAL_FORMS').val();
+	$('#div_id_email-'+(parseInt(form_idx)-1)+'-email_address').parent().parent().parent().append($('#empty_email').html().replace(/__prefix__/g, form_idx));
+	$('#id_email-TOTAL_FORMS').val(parseInt(form_idx) + 1);
 });
 
     $('#button-id-add_address').click(function() {

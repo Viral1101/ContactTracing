@@ -1,0 +1,12 @@
+{% if tracelogforms %}
+<table class="table table-striped">
+    {% for tracelog in tracelogforms %}
+    <tr>
+        <td><b>Logged: </b>{{ tracelog.user }} {{tracelog.log_date.value}}</td>
+    </tr>
+    <tr>
+        <td>{{ tracelog.notes.value }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}

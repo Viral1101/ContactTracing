@@ -52,7 +52,7 @@
                             <div class="card">{{ ct_symptom_log.sx_log.sx_state }}</div>
                             <div class="card">{{ ct_symptom_log.sx_log.note }}</div>
                             <div class="card">st:{{ ct_symptom_log.sx_log.start }}</div>
-                            <div class="card">end:{{ ct_symptom_log.sx_log.ende }}</div>
+                            <div class="card">end:{{ ct_symptom_log.sx_log.end }}</div>
                         </div>
                     </div>
 
@@ -68,6 +68,7 @@
                 {% endif %}
             </div>
             <div class="card col-sm-6 p-0">
+                test
                 {% if ct_logs %}
                 {% for ct_log in ct_logs %}
                 {% if ct_log %}

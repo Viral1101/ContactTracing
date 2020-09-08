@@ -24,14 +24,27 @@
             </div>
         </div>
     </div>
-        {% include 'person-contact-card.html' %}
-        {% include 'release-info.html' %}
-        {% include 'pcp-info.html' %}
-        {% include 'symptom-table.html' %}
-        {% include 'call-log.html' %}
+        {% include 'info/person-contact-card.html' %}
+        {% include 'info/testing-info.html' %}
+        {% include 'info/release-info.html' %}
+        {% include 'info/pcp-info.html' %}
+        {% include 'info/symptom-table.html' %}
+        {% include 'info/call-log.html' %}
         <!-- if type == 'Case' %} -->
-            {% include 'contact-card-contacts-list.html' %}
+            {% include 'info/contact-card-contacts-list.html' %}
         <!-- else %}
              include 'contact-card-cases-list.html'
          endif %}-->
+
+        {% include 'info/linked_cases.html' %}
+
+        {% if case.active and case.status.status == 'Needs investigation' %}
+            <a class="btn btn-primary" href="/TracingApp/investigate/{{ type }}/{{ case.case_id }}" role="button">Investigate Case</a>
+        {% elif type == 'C' %}
+            <a class="btn btn-primary" href="/TracingApp/follow-up/{{ type }}/{{ case.case_id }}" role="button">Follow-up Case</a>
+        {% else %}
+            <a class="btn btn-primary" href="/TracingApp/follow-up/{{ type }}/{{ case.contact_id }}" role="button">Follow-up Contact</a>
+        {% endif %}
+
+
     {% endblock %}

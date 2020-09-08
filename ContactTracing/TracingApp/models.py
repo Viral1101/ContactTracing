@@ -15,7 +15,7 @@ class Addresses(models.Model):
     city = models.TextField(blank=True, null=True)
     state = models.CharField(max_length=2, blank=True, null=True)
     post_code = models.CharField(max_length=5, blank=True, null=True)
-    people = models.ManyToManyField('Addresses', through='PersonAddressJoin')
+    # people = models.ManyToManyField('Addresses', through='PersonAddressJoin')
 
     class Meta:
         # managed = False
@@ -231,7 +231,7 @@ class ContactPrefs(models.Model):
 class ContactSxJoin(models.Model):
     join_id = models.AutoField(primary_key=True)
     case = models.ForeignKey('Contacts', models.DO_NOTHING)
-    sx = models.ForeignKey('Symptoms', models.DO_NOTHING)
+    sx = models.ForeignKey('SxLog', models.DO_NOTHING)
 
     class Meta:
         # managed = False
@@ -635,3 +635,14 @@ class Users(models.Model):
     class Meta:
         managed = False
         db_table = 'users'
+
+
+class CaseLinks(models.Model):
+    link_id = models.AutoField(primary_key=True)
+    exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='exposing')
+    developed_case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='developed')
+    developed_contact = models.ForeignKey(Contacts, models.DO_NOTHING)
+
+    class Meta:
+        managed = True
+        db_table = 'case_links'

@@ -1,0 +1,24 @@
+{% if testforms %}
+<table class="table">
+    <thead class="thead-light">
+        <tr>
+            <th>Test Date</th>
+            <th>Result Date</th>
+            <th>PCHD Received</th>
+            <th>Result</th>
+            <th>Test Type</th>
+            <th>Logged by</th>
+        </tr>
+    </thead>
+    {% for testform in testforms %}
+    <tr>
+        <td>{{ testform.sample_date }}</td>
+        <td>{{ testform.result_date }}</td>
+        <td>{{ testform.rcvd_date }}</td>
+        <td>{% if testform.result == 1 %}Positive{% else %}Negative{% endif %}</td>
+        <td>{{ testform.test_type }}</td>
+        <td>{{ testform.user}} {{ testform.logged_date }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}

@@ -1,0 +1,28 @@
+
+{% if symptomforms %}
+<table class="table table-striped">
+    <thead class="thead-light">
+        <tr>
+            <th>Symptom</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Note</th>
+            <th>Alt Dx</th>
+            <th>Logged</th>
+        </tr>
+    </thead>
+    {% for symptomlog in symptomforms %}
+    <tr>
+
+        <td>{{ symptomlog.symptom }}</td>
+        <td>{{ symptomlog.start.value }}</td>
+        <td>{{ symptomlog.end.value }}</td>
+        <td>{{ symptomlog.status }}</td>
+        <td>{{ symptomlog.note.value }}</td>
+        <td>{{ symptomlog.alt_dx.value }}</td>
+        <td>{{ symptomlog.user }} {{ symptomlog.rec_date.value }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}

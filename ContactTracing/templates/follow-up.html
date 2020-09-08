@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content2 %}
+
+    {% load crispy_forms_tags %}
+
+<form method="post">
+
+    {% csrf_token %}
+
+{% crispy personform %}
+{% crispy addressforms addressformhelper %}
+<input type="button" name="add_address" value="Add Address" class="btn btn-info" id="button-id-add_address">
+{% crispy phoneforms phoneformhelper %}
+<input type="button" name="add_phone" value="Add Phone" class="btn btn-info" id="button-id-add_phone">
+{% crispy emailforms emailformhelper %}
+<input type="button" name="add_email" value="Add Email" class="btn btn-info" id="button-id-add_email">
+{% include 'info/testing-info.html' %}
+{% crispy caseform %}
+{% include 'followup/old-symptom-logs.html' %}
+{% crispy new_symptomforms symptomloghelper %}
+<input type="button" name="add_symptom" value="Add Symptom" class="btn btn-info" id="button-id-add_symptom">
+
+<div class="row">
+    <h5 class="card-title">PCHD Call Logs</h5>
+</div>
+{% include 'followup/old-trace-logs.html' %}
+{% crispy new_tracelogform %}
+
+<div id="empty_address" style="display:none">
+    {% crispy addressforms.empty_form addressformhelper %}
+</div>
+<div id="empty_phone" style="display:none">
+    {% crispy phoneforms.empty_form phoneformhelper %}
+</div>
+<div id="empty_symptom" style="display:none">
+    {% crispy symptomforms.empty_form symptomloghelper %}
+</div>
+
+    <p></p>
+    <div class="form-row">
+        <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />
+        <input class="btn btn-danger col-md-3 mr-md-3" type="submit" name="cancel" value="Cancel" />
+    </div>
+
+</form>
+
+<script>
+    $('#add_more').click(function() {
+	var form_idx = $('#id_form-TOTAL_FORMS').val();
+	$('#form_set').append($('#empty_form').html().replace(/__prefix__/g, form_idx));
+	$('#id_form-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_phone').click(function() {
+	var form_idx = $('#id_phone-TOTAL_FORMS').val();
+	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
+	$('#id_phone-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_address').click(function() {
+	var form_idx = $('#id_address-TOTAL_FORMS').val();
+	$('#div_id_address-'+(parseInt(form_idx)-1)+'-street').parent().parent().parent().append($('#empty_address').html().replace(/__prefix__/g, form_idx));
+	$('#id_address-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_email').click(function() {
+	var form_idx = $('#id_email-TOTAL_FORMS').val();
+	$('#div_id_email-'+(parseInt(form_idx)-1)+'-street').parent().parent().parent().append($('#empty_email').html().replace(/__prefix__/g, form_idx));
+	$('#id_email-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_symptom').click(function() {
+	var form_idx = $('#id_sxlog-TOTAL_FORMS').val();
+	$('#div_id_sxlog-'+(parseInt(form_idx)-1)+'-symptom').parent().parent().parent().append($('#empty_symptom').html().replace(/__prefix__/g, form_idx));
+	$('#id_sxlog-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+</script>
+
+{% endblock %}

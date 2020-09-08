@@ -48,37 +48,45 @@
             <div class="card-group">
                 <div class="card">
                     <div class="card-body">
-                        {{ symptom.sx.symptom }}
+                        {{ symptom.symptom }}
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-body">
-                        {{ symptom.sx_log.start }}
+                        {{ symptom.start }}
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-body">
-                        {{ symptom.sx_log.end }}
+                        {{ symptom.end }}
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-body">
-                        {{ symptom.sx_log.note }}
+                        {% if symptom.note %}
+                        {{ symptom.note }}
+                        {% else %}
+                        N/A
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-body">
-                        {{ symptom.sx_log.sx_state.sx_state }}
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-body">6
-                        {{ symptom.sx_log.alt_dx }}
+                        {{ symptom.sx_state.sx_state }}
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-body">
-                        {{ symptom.sx_log.user.first_name }} {{ symptom.sx_log.user.last_name }} {{ symptom.sx_log.rec_date }}
+                        {% if symptom.alt_dx %}
+                        {{ symptom.alt_dx }}
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        {{ symptom.user.first_name }} {{ symptom.user.last_name }} {{ symptom.rec_date }}
                     </div>
                 </div>
             </div>

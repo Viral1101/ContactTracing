@@ -1,0 +1,46 @@
+<div class="card-group">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title">{% if type == 'CT' %}Initial Exposure{% else %}Symptom Start{% endif %}</h5>
+      </div>
+      <div class="card-body">
+          <p class="card-text">{% if type == 'CT' %}
+                {{ case.init_exposure }}
+              {% else %}
+                {{ first_sx }}
+              {% endif %}</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title">{% if type == 'CT' %}Last Exposure{% else %}Tentative Release Date{% endif %}</h5>
+      </div>
+      <div class="card-body">
+          <p class="card-text">{% if case.tent_rel or case.last_exposure %}
+                {{ case.tent_rel }}
+                {{ case.last_exposure }}
+
+              {% endif %}</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title">{% if type == 'CT' %}Quarantine End{% else %}Release Date{% endif %}</h5>
+      </div>
+      <div class="card-body">
+          <p class="card-text">{{ case.release_date }}{{ case.tent_qt_end }}</p>
+      </div>
+    </div>
+    {% if case.status.status_id == 11 or case.status.status_id == 12 %}
+    <div class="card text-white bg-success">
+            {% else %}
+    <div class="card">
+        {% endif %}
+      <div class="card-header">
+        <h5 class="card-title">Status</h5>
+      </div>
+      <div class="card-body">
+          <p class="card-text">{{ case.status.status }}</p>
+      </div>
+    </div>
+</div>

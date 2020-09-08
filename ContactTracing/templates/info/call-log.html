@@ -4,6 +4,7 @@
                     <div class="card-header">
                         <h5 class="card-title">PCHD Call Log</h5>
                     </div>
+                    {% if logs %}
                     {% for log in logs %}
                     {% if log.case_id == case.case_id %}
                     <div class="card-group">
@@ -16,5 +17,10 @@
                     </div>
                     {% endif %}
                     {% endfor %}
+                    {% else %}
+                        <div class="card-body">
+                            No Call Logs recorded.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
