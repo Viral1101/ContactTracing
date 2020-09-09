@@ -30,6 +30,7 @@ class NewPhoneNumberForm(forms.ModelForm):
             print(self.cleaned_data['phone_id'])
 
 
+
 class AddressesForm(forms.ModelForm):
     address_id = forms.IntegerField(widget=forms.HiddenInput, required=False)
     street = forms.CharField(required=False)
@@ -1323,29 +1324,12 @@ class AddContactEmailFormHelper(FormHelper):
         )
 
 
-class AssignCaseForm(forms.ModelForm):
+class AssignCaseForm(forms.Form):
     assign_box = forms.BooleanField(required=False)
-    case_id = forms.CharField(required=False)
-
-    class Meta:
-        model = Cases
-        fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.helper = FormHelper(self)
-        self.helper.form_tag = False
-        self.helper.disable_csrf = True
-
-    def clean_case_id(self):
-        print('cleaning')
-
-
-class AssignContactForm(forms.ModelForm):
-    assign_box = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
-
-    class Meta:
-        model = Contacts
-        fields = ['assign_box',
-                  ]
-
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        self.empty_permitted = False

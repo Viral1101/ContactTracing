@@ -50,6 +50,35 @@
         </tbody>
       </table>
     </div>
+    <div class="table-responsive">
+      {{ contactformset.management_form }}
+      <table class="table table-striped table-sm table-hover">
+        <thead>
+          <tr>
+            <th>Assign</th>
+            <th>Case ID</th>
+            <th>Name</th>
+            <th>DOB</th>
+            <th>Age</th>
+            <th>Status</th>
+            <th>Last Follow-up Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for assign, x in assigncontacts %}
+          <tr>
+            <td>{{ assign.assign_box }}</td>
+            <td>C{{ x.contact_id }}</td>
+            <td>{{ x.person.first }} {{ x.person.last }}</td>
+            <td>{{ x.person.dob }}</td>
+            <td>{{ x.person.age }}</td>
+            <td>{{ x.status }}</td>
+            <td>{{ x.last_follow }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   <p></p>
     <div class="form-row">
         <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from .forms import CaseForm
 from django.views.generic.edit import FormView
 from django.utils.decorators import method_decorator
-from django.forms import inlineformset_factory, modelformset_factory
+from django.forms import inlineformset_factory, modelformset_factory, formset_factory
 from .forms import *
 
 # Create your views here.
@@ -945,8 +945,11 @@ def followup(request, cttype, pid):
 @login_required(login_url='/accounts/login/')
 def assign_contacts_cases(request):
 
-    CaseAssignmentFormsest = modelformset_factory(Cases, form=AssignCaseForm, extra=0)
     cases = Cases.objects.filter(active=1)
+    CaseAssignmentFormsest = formset_factory(AssignCaseForm, extra=len(cases))
+
+    contacts = Contacts.objects.filter(active=1)
+    ContactAssignmentFormset = formset_factory(AssignCaseForm, extra=len(contacts))
 
     assignment = Assignments()
 
@@ -954,24 +957,34 @@ def assign_contacts_cases(request):
 
     if request.method == 'POST':
         # print('POST')
-        caseassignments = CaseAssignmentFormsest(request.POST, queryset=cases)
-        assignform = NewAssignment(request.POST, instance=assignment, initial={'status': False})
 
-        for x in caseassignments:
-            x.fields['case_id'].initial = Cases.objects.get(case_id=1)
-            x.fields['status'].initial = Statuses.objects.get(status_id=1)
-            x.fields['person'].initial = Persons.objects.get(person_id=1)
-            x.fields['test'].initial = Tests.objects.get(test_id=1)
+        default_case = Cases.objects.get(case_id=1)
+        default_status = default_case.status
+        default_test = Tests.objects.get(test_id=1)
+        default_person = default_case.person
+
+        caseassignments = CaseAssignmentFormsest(request.POST)
+        contactassignments = ContactAssignmentFormset(request.POST)
+
+        assignform = NewAssignment(request.POST, instance=assignment)
+
+        # for x in caseassignments:
+        #     x.fields['case_id'].value = Cases.objects.get(case_id=1)
+        #     x.fields['status'].initial = Statuses.objects.get(status_id=1)
+        #     x.fields['person'].initial = Persons.objects.get(person_id=1)
+        #     x.fields['test'].initial = Tests.objects.get(test_id=1)
 
         # print(caseassignments.is_valid())
         # print(assignform.is_valid())
 
-        if caseassignments.is_valid() and assignform.is_valid():
+        if caseassignments.is_valid() and assignform.is_valid() and contactassignments.is_valid():
             i = 0
+            j = 0
             for caseassign in caseassignments:
                 # print('in for')
                 if caseassign.is_valid():
                     # print('valid form')
+                    print(caseassign.cleaned_data)
                     if caseassign.cleaned_data['assign_box']:
                         # print('checked box')
                         this_assign = Assignments(user=assignform.cleaned_data['user'],
@@ -981,12 +994,27 @@ def assign_contacts_cases(request):
                         this_assign.save()
                 i = i + 1
 
+            for contactassign in contactassignments:
+                if contactassign.is_valid():
+                    # print('valid form')
+                    # print(contactassign.cleaned_data)
+                    if contactassign.cleaned_data['assign_box']:
+                        # print('checked box')
+                        this_assign = Assignments(user=assignform.cleaned_data['user'],
+                                                  contact=contacts[j],
+                                                  status=False,
+                                                  assign_type=assignform.cleaned_data['assign_type'])
+                        this_assign.save()
+                j = j + 1
+
             return redirect('assignments')
-        # print(caseassignments.errors)
+        print(caseassignments.errors)
 
     else:
 
-        caseassignments = CaseAssignmentFormsest(queryset=cases)
+        caseassignments = CaseAssignmentFormsest()
+        contactassignments = ContactAssignmentFormset()
+
         assignform = NewAssignment(instance=assignment, initial={'status': False})
         # caseassignments = AssignCaseForm()
 
@@ -995,5 +1023,7 @@ def assign_contacts_cases(request):
     return render(request, 'bulk-assign/multiple-assign.html', {'assigncases': zip(caseassignments, cases),
                                                                 'assignform': assignform,
                                                                 'assignformset': caseassignments,
+                                                                'assigncontacts': zip(contactassignments, contacts),
+                                                                'contactformset': contactassignments,
                                                                 # 'cases': cases[0],
                                                                 })
