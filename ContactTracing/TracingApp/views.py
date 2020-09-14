@@ -34,7 +34,6 @@ def assigns(request):
 
 @login_required(login_url='/accounts/login/')
 def cases(request):
-    # cs_assigns = Assignments.objects.filter(case__case_id__gte=0)
     cs_cases = Cases.objects.all()
     # phones = PersonPhoneJoin.objects.all()
     today = datetime.date.today()
@@ -44,10 +43,13 @@ def cases(request):
     # cs_contacts = CaseContactJoin.objects.all()
     ct_type = 'C'
     cs_name = 'Cases'
+    cs_assigns = Assignments.objects.filter(case__in=cs_cases, status=0)
+
+    print(len(cs_assigns))
 
     return render(request, 'case-list.html', {'today': today,
                                               # 'phones': phones,
-                                              # 'assigns': cs_assigns,
+                                              'assigns': cs_assigns,
                                               'cases': cs_cases,
                                               # 'sxLogs': cs_sx_logs,
                                               # 'logs': logs,
@@ -62,10 +64,12 @@ def contacts(request):
     ct_cases = Contacts.objects.all()
     ct_type = 'CT'
     ct_name = 'Contacts'
+    cs_assigns = Assignments.objects.filter(contact__in=ct_cases, status=0)
 
     return render(request, 'case-list.html', {'cases': ct_cases,
                                               'type': ct_type,
-                                              'name': ct_name,})
+                                              'name': ct_name,
+                                              'assigns': cs_assigns,})
 
 
 @login_required(login_url='/accounts/login/')
@@ -345,13 +349,13 @@ def case_investigation(request, cttype, pid):
     case = get_object_or_404(Cases, case_id=pid)
     person = get_object_or_404(Persons, person_id=case.person_id)
     test = get_object_or_404(Tests, test_id=case.test_id)
-    log = TraceLogs()
     user = AuthUser.objects.get(id=request.user.id)
+    log = TraceLogs()
     # addressesJoins = PersonAddressJoin.objects.filter(person=person)
     # addresses = Addresses.objects.filter(address_id__in=addressesJoi
     # ns.values('address_id'))
 
-    AddressFormSet = modelformset_factory(Addresses,  form=AddressesForm, extra=0)
+    AddressFormSet = modelformset_factory(Addresses, form=AddressesForm, extra=0)
     PhoneFormSet = modelformset_factory(Phones, form=PhoneForm, extra=0)
 
     NewTestFormSet = modelformset_factory(Tests, form=NewTest, extra=0) #for adding new tests if needed
@@ -387,29 +391,29 @@ def case_investigation(request, cttype, pid):
 
         addressforms = AddressFormSet(request.POST, prefix='address', queryset=addressquery)
         emailforms = EmailFormSet(request.POST, prefix='email', queryset=emailquery)
-        new_testforms = NewTestFormSet(user, request.POST, prefix='new_test')
+        new_testforms = NewTestFormSet(request.POST, prefix='new_test')
 
         # phone_query = PersonPhoneJoin.objects.filter(person_id=case.person_id)
         phoneforms = PhoneFormSet(request.POST, prefix='phone', queryset=phone_query)
         symptomforms = SymptomFormSet(request.POST, prefix='symptom')
-        symptomlogforms = SymptomLogFormSet(request.POST, prefix='sxlog', form_kwargs={'user': user},
+        symptomlogforms = SymptomLogFormSet(request.POST, prefix='sxlog',
                                             queryset=symptom_query)
 
         for symptomlogform in symptomlogforms:
             symptomlogform.user = user
 
-        logform.user = user
+        # logform.user = user
             # symptomlogform.rec_date = datetime.date.today()
 
-        # print("Case: %s | Person: %s | Address: %s | Phone: %s | Email: %s | Test: %s | Log: %s | Sx: %s" %
-        #       (caseform.is_valid(),
-        #        personform.is_valid(),
-        #        addressforms.is_valid(),
-        #        emailforms.is_valid(),
-        #        phoneforms.is_valid(),
-        #        testform.is_valid(),
-        #        logform.is_valid(),
-        #        symptomlogforms.is_valid()))
+        print("Case: %s | Person: %s | Address: %s | Phone: %s | Email: %s | Test: %s | Log: %s | Sx: %s" %
+              (caseform.is_valid(),
+               personform.is_valid(),
+               addressforms.is_valid(),
+               emailforms.is_valid(),
+               phoneforms.is_valid(),
+               testform.is_valid(),
+               logform.is_valid(),
+               symptomlogforms.is_valid()))
 
         if caseform.is_valid() \
                 and personform.is_valid()\
@@ -459,7 +463,9 @@ def case_investigation(request, cttype, pid):
                 if symptomlogform.is_valid():
                     try:
                         if symptomlogform.cleaned_data['symptom']:
-                            this_symptom = symptomlogform.save()
+                            this_symptom = symptomlogform.save(commit=False)
+                            this_symptom.user = user
+                            this_symptom.save()
                             case_sx, created3 = CaseSxJoin.objects.get_or_create(case=this_case, sx=this_symptom)
                             case_sx.save()
                     except KeyError:
@@ -471,7 +477,7 @@ def case_investigation(request, cttype, pid):
             this_case.save()
 
             # Mark the assignment as done with the date
-            this_assignment = Assignments.objects.get(case=this_case, user=user)
+            this_assignment = Assignments.objects.get(case=this_case, user=user, status=0)
             this_assignment.status = 1
             this_assignment.date_done = datetime.date.today()
             this_assignment.save()
@@ -498,7 +504,7 @@ def case_investigation(request, cttype, pid):
         logform = NewTraceLogForm(user, instance=log)
 
         symptomforms = SymptomFormSet(queryset=Symptoms.objects.none())
-        symptomlogforms = SymptomLogFormSet(queryset=symptom_query, form_kwargs={'user': user}, prefix='sxlog')
+        symptomlogforms = SymptomLogFormSet(queryset=symptom_query, prefix='sxlog')
 
     return render(request, 'case edit/case-investigation.html', {'caseform': caseform,
                                                                  'personform': personform,
@@ -549,17 +555,19 @@ def add_contact(request, cttype, pid):
     # case_sx_query = CaseSxJoin.objects.filter(case=case)
     symptom_query = SxLog.objects.none()
 
+    user = AuthUser.objects.get(id=request.user.id)
+
     if request.method == 'POST':
 
         contactform = AddContactForm(request.POST, instance=contact)
         personform = PersonForm(request.POST, instance=person)
-        logform = ContactTraceLogForm(request.user, request.POST, instance=log)
+        logform = ContactTraceLogForm(user, request.POST, instance=log)
 
         addressforms = AddressFormSet(request.POST, prefix='address')
         phoneforms = PhoneFormSet(request.POST, prefix='phone')
         emailforms = EmailFormSet(request.POST, prefix='email')
 
-        symptomlogforms = SymptomLogFormSet(request.POST, form_kwargs={'user': request.user}, prefix='sxlog')
+        symptomlogforms = SymptomLogFormSet(request.POST, prefix='sxlog')
 
         if 'cancel' in request.POST:
             return redirect('assignments')
@@ -574,7 +582,7 @@ def add_contact(request, cttype, pid):
 
         # contactform.fields['person'] = person
 
-        logform.user = request.user.id
+        logform.user = AuthUser.objects.get(id=request.user.id)
 
         # for thing in addressforms:
             # print(thing.errors)
@@ -604,6 +612,7 @@ def add_contact(request, cttype, pid):
                 case_log_query = CaseLogJoin.objects.filter(case=case).last()
                 contact_log, ctd2 = ContactLogJoin.objects.get_or_create(contact=this_contact, log=case_log_query.log)
             else:
+                # print(this_log.user)
                 this_log = logform.save()
                 contact_log, ctd2 = ContactLogJoin.objects.get_or_create(contact=this_contact, log=this_log)
 
@@ -613,12 +622,25 @@ def add_contact(request, cttype, pid):
             case_contact.save()
 
             for addressform in addressforms:
-                if addressform.cleaned_data['use_case_address']:
-                    case_address = PersonAddressJoin.objects.filter(person=case.person).first().address
-                    person_address, created = PersonAddressJoin.objects.get_or_create(person=this_person,
-                                                                                      address=case_address)
-                    person_address.save()
-                elif addressform.is_valid():
+                try:
+                    if addressform.cleaned_data['use_case_address']:
+                        case_address = PersonAddressJoin.objects.filter(person=case.person).first().address
+                        person_address, created = PersonAddressJoin.objects.get_or_create(person=this_person,
+                                                                                          address=case_address)
+                        person_address.save()
+                    else:
+                        try:
+                            if addressform.cleaned_data['street']:
+                                this_address = addressform.save()
+                                person_address, created = PersonAddressJoin.objects.get_or_create(person=this_person,
+                                                                                                  address=this_address)
+                                person_address.save()
+                                # this_address.save()
+                        except KeyError:
+                            #     No address to record
+                            pass
+                except KeyError:
+                    print("use_case_address threw KeyError")
                     try:
                         if addressform.cleaned_data['street']:
                             this_address = addressform.save()
@@ -627,7 +649,7 @@ def add_contact(request, cttype, pid):
                             person_address.save()
                             # this_address.save()
                     except KeyError:
-                        #     No Symptoms to record
+                        #     No address to record
                         pass
 
             for phoneform in phoneforms:
@@ -659,7 +681,9 @@ def add_contact(request, cttype, pid):
                 if symptomlogform.is_valid():
                     try:
                         if symptomlogform.cleaned_data['symptom']:
-                            this_symptom = symptomlogform.save()
+                            this_symptom = symptomlogform.save(commit=False)
+                            this_symptom.user = user
+                            this_symptom.save()
                             case_sx, created3 = ContactSxJoin.objects.get_or_create(case=this_contact, sx=this_symptom)
                             case_sx.save()
                     except KeyError:
@@ -681,9 +705,9 @@ def add_contact(request, cttype, pid):
         phoneforms = PhoneFormSet(queryset=phone_query, prefix='phone')
         emailforms = EmailFormSet(queryset=email_query, prefix='email')
         contactform = AddContactForm(instance=contact)
-        logform = ContactTraceLogForm(request.user, instance=log)
+        logform = ContactTraceLogForm(user, instance=log)
 
-        symptomlogforms = SymptomLogFormSet(queryset=symptom_query, form_kwargs={'user': request.user}, prefix='sxlog')
+        symptomlogforms = SymptomLogFormSet(queryset=symptom_query, prefix='sxlog')
 
     return render(request, 'contacts/add-contact.html', {'contactform': contactform,
                                                          'personform': personform,
@@ -713,7 +737,7 @@ def followup(request, cttype, pid):
         case = get_object_or_404(Contacts, contact_id=pid)
         symptom_query = ContactSxJoin.objects.filter(case_id=case)
         trace_log_query = ContactLogJoin.objects.filter(contact_id=case)
-        test = Tests.objects.none()
+        test = 0
         user = AuthUser.objects.get(id=request.user.id)
         this_assignment, a_created = Assignments.objects.get_or_create(contact=case, user=user, status=0)
     else:
@@ -723,9 +747,29 @@ def followup(request, cttype, pid):
 
     # print(symptom_query)
 
-    AddressFormSet = modelformset_factory(Addresses, form=AddressesForm, extra=0)
-    PhoneFormSet = modelformset_factory(Phones, form=PhoneForm, extra=0)
-    EmailFormSet = modelformset_factory(Emails, form=EmailForm, extra=0)
+    address_query = PersonAddressJoin.objects.filter(person=person).values('address')
+    # print(address_query)
+    phone_query = PersonPhoneJoin.objects.filter(person=person).values('phone')
+    email_query = PersonEmailJoin.objects.filter(person=person).values('email')
+
+    if len(address_query) > 0:
+        address_extra = 0
+    else:
+        address_extra = 1
+
+    if len(phone_query) > 0:
+        phone_extra = 0
+    else:
+        phone_extra = 1
+
+    if len(email_query) > 0:
+        email_extra = 0
+    else:
+        email_extra = 1
+
+    AddressFormSet = modelformset_factory(Addresses, form=AddressesForm, extra=address_extra)
+    PhoneFormSet = modelformset_factory(Phones, form=PhoneForm, extra=phone_extra)
+    EmailFormSet = modelformset_factory(Emails, form=EmailForm, extra=email_extra)
     SymptomFormSet = modelformset_factory(SxLog, form=OldSymptomLogForm, extra=0)
     TraceLogFormSet = modelformset_factory(TraceLogs, form=TraceLogForm, extra=0)
 
@@ -739,33 +783,48 @@ def followup(request, cttype, pid):
     symptomloghelper = SymptomLogSetHelper()
     traceloghelper = OldTraceLogFormHelper()
 
-    address_query = PersonAddressJoin.objects.filter(person=person).values('address')
-    # print(address_query)
-    phone_query = PersonPhoneJoin.objects.filter(person=person).values('phone')
-    email_query = PersonEmailJoin.objects.filter(person=person).values('email')
-
     if request.method == 'POST':
         if cttype == 'C':
-            caseform = CaseForm(request.POST, instance=case)
+            caseform = FollowUpCaseForm(request.POST, instance=case)
         elif cttype == 'CT':
             caseform = FollowUpContactForm(request.POST, instance=case)
         else:
             return Http404("Invalid type.")
 
         personform = PersonForm(request.POST, instance=person)
-        addressforms = AddressFormSet(request.POST, queryset=Addresses.objects.filter(address_id__in=address_query))
-        phoneforms = PhoneFormSet(request.POST, queryset=Phones.objects.filter(phone_id__in=phone_query))
-        emailforms = EmailFormSet(request.POST, queryset=Emails.objects.filter(email_id__in=email_query))
-        symptomforms = SymptomFormSet(request.POST, queryset=SxLog.objects.filter(log_id__in=symptom_query).order_by('symptom').order_by('-rec_date'))
+        # print(address_query)
+        addressforms = AddressFormSet(request.POST, queryset=Addresses.objects.filter(address_id__in=address_query), prefix='address')
+        phoneforms = PhoneFormSet(request.POST, queryset=Phones.objects.filter(phone_id__in=phone_query), prefix='phone')
+        emailforms = EmailFormSet(request.POST, queryset=Emails.objects.filter(email_id__in=email_query), prefix='email')
+        symptomforms = SymptomFormSet(request.POST, queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
         tracelogforms = TraceLogFormSet(request.POST, queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
         new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log)
-        new_symptomforms = NewSymptomFormSet(request.POST, prefix='sxlog', form_kwargs={'user': user},
+        new_symptomforms = NewSymptomFormSet(request.POST, prefix='sxlog',
                                              queryset=SxLog.objects.none())
 
-        try:
-            testforms = Tests.objects.filter(test_id=test)
-        except ValueError:
+        # print(test)
+        # print(len(test))
+
+        if test is not None:
+            if test > 0:
+                try:
+                    testforms = Tests.objects.filter(test_id=test)
+                except ValueError:
+                    testforms = None
+            else:
+                testforms = None
+        else:
             testforms = None
+
+        print("Case: %s" % caseform.is_valid())
+        print("Person: %s" % personform.is_valid())
+        print("Email: %s" % emailforms.is_valid())
+        print("Address: %s" % addressforms.is_valid())
+        print("Phone: %s" % phoneforms.is_valid())
+        print("Log: %s" % new_tracelogform.is_valid())
+        print("Symptom: %s" % new_symptomforms.is_valid())
+
+        print(addressforms.errors)
 
         if caseform.is_valid() \
                 and personform.is_valid() \
@@ -814,7 +873,9 @@ def followup(request, cttype, pid):
                 if new_symptomform.is_valid():
                     try:
                         if new_symptomform.cleaned_data['symptom']:
-                            this_symptom = new_symptomform.save()
+                            this_symptom = new_symptomform.save(commit=False)
+                            this_symptom.user = user
+                            this_symptom.save()
                             if cttype == 'C':
                                 case_sx = CaseSxJoin(case=case, sx=this_symptom)
                                 case_sx.save()
@@ -825,8 +886,14 @@ def followup(request, cttype, pid):
                         #     No Symptoms to record
                         pass
 
-            # print("Caseform chanaged?")
-            # print(caseform.changed_data)
+            print("Caseform chanaged?")
+            print(caseform.changed_data)
+
+            print("last_follow initial: %s | last_follow current: %s" % (caseform['last_follow'].initial, caseform.cleaned_data['last_follow']))
+            print("active initial: %s | active current: %s" % (
+            caseform['active'].initial, caseform.cleaned_data['active']))
+
+            this_caseform = caseform.save(commit=False)
 
             if caseform.has_changed():
                 # print("It's changed")
@@ -836,7 +903,9 @@ def followup(request, cttype, pid):
                     if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=9) or \
                             caseform.cleaned_data['status'] == Statuses.objects.get(status_id=10):
                         # print("Caseform changed and marked as case")
-                        caseform.cleaned_data['active'] = False
+                        this_caseform.active = False
+                        print("Just set to inactive, is it?")
+                        print(this_caseform.active)
 
                         # print(caseform.cleaned_data['active'])
                         this_status = caseform.cleaned_data['status']
@@ -876,23 +945,28 @@ def followup(request, cttype, pid):
 
                         for linked_case in linked_cases:
                             # print(linked_case.case)
-                            this_link = CaseLinks(exposing_case=linked_case.case, developed_case=upgraded_case)
+                            this_link = CaseLinks(exposing_case=linked_case.case,
+                                                  developed_case=upgraded_case,
+                                                  developed_contact=this_caseform)
                             this_link.save()
 
-                elif caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
+                if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=11) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13):
 
-                    caseform.cleaned_data['active'] = False
-                else:
-                    caseform.cleaned_data['active'] = True
+                    print("Secondary, by status:")
+                    print(caseform.cleaned_data['status'])
+                    this_caseform.active = False
 
                         # print("Case upgraded")
 
             print('Active: %s' % caseform.cleaned_data['active'])
-            caseform.cleaned_data['last_follow'] = datetime.date.today()
-            caseform.save()
+            this_caseform.last_follow = datetime.date.today()
+            # caseform.cleaned_data['last_follow'] = datetime.date.today()
+            print("Before caseform is saved, inactive?")
+            print(this_caseform.active)
+            this_caseform.save()
 
             if a_created:
                 this_assignment.assign_type = 4
@@ -904,21 +978,23 @@ def followup(request, cttype, pid):
 
     else:
         if cttype == 'C':
-            caseform = CaseForm(instance=case)
+            caseform = FollowUpCaseForm(instance=case)
         elif cttype == 'CT':
             caseform = FollowUpContactForm(instance=case)
         else:
             return Http404("Invalid type.")
 
         personform = PersonForm(instance=person)
-        addressforms = AddressFormSet(queryset=Addresses.objects.filter(address_id__in=address_query))
-        phoneforms = PhoneFormSet(queryset=Phones.objects.filter(phone_id__in=phone_query))
-        emailforms = EmailFormSet(queryset=Emails.objects.filter(email_id__in=email_query))
-        symptomforms = SymptomFormSet(queryset=SxLog.objects.filter(
-            log_id__in=symptom_query))
+        addressforms = AddressFormSet(queryset=Addresses.objects.filter(address_id__in=address_query), prefix='address')
+        phoneforms = PhoneFormSet(queryset=Phones.objects.filter(phone_id__in=phone_query), prefix='phone')
+        emailforms = EmailFormSet(queryset=Emails.objects.filter(email_id__in=email_query), prefix='email')
+        symptomforms = SymptomFormSet(queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
+        print(symptom_query)
+        print("FORMS:")
+        print(symptomforms)
         tracelogforms = TraceLogFormSet(queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
         new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log)
-        new_symptomforms = NewSymptomFormSet(prefix='sxlog', form_kwargs={'user': user},
+        new_symptomforms = NewSymptomFormSet(prefix='sxlog',
                                              queryset=SxLog.objects.none())
 
         # A contact shouldn't have a test
@@ -945,10 +1021,10 @@ def followup(request, cttype, pid):
 @login_required(login_url='/accounts/login/')
 def assign_contacts_cases(request):
 
-    cases = Cases.objects.filter(active=1)
+    cases = Cases.objects.filter(active=1).order_by('last_follow', 'case_id')
     CaseAssignmentFormsest = formset_factory(AssignCaseForm, extra=len(cases))
 
-    contacts = Contacts.objects.filter(active=1)
+    contacts = Contacts.objects.filter(active=1).order_by('last_follow', 'contact_id')
     ContactAssignmentFormset = formset_factory(AssignCaseForm, extra=len(contacts))
 
     assignment = Assignments()
@@ -958,13 +1034,8 @@ def assign_contacts_cases(request):
     if request.method == 'POST':
         # print('POST')
 
-        default_case = Cases.objects.get(case_id=1)
-        default_status = default_case.status
-        default_test = Tests.objects.get(test_id=1)
-        default_person = default_case.person
-
-        caseassignments = CaseAssignmentFormsest(request.POST)
-        contactassignments = ContactAssignmentFormset(request.POST)
+        caseassignments = CaseAssignmentFormsest(request.POST, prefix='case')
+        contactassignments = ContactAssignmentFormset(request.POST, prefix='contact')
 
         assignform = NewAssignment(request.POST, instance=assignment)
 
@@ -1012,8 +1083,8 @@ def assign_contacts_cases(request):
 
     else:
 
-        caseassignments = CaseAssignmentFormsest()
-        contactassignments = ContactAssignmentFormset()
+        caseassignments = CaseAssignmentFormsest(prefix='case')
+        contactassignments = ContactAssignmentFormset(prefix='contact')
 
         assignform = NewAssignment(instance=assignment, initial={'status': False})
         # caseassignments = AssignCaseForm()
@@ -1027,3 +1098,12 @@ def assign_contacts_cases(request):
                                                                 'contactformset': contactassignments,
                                                                 # 'cases': cases[0],
                                                                 })
+
+
+@login_required(login_url='/accounts/login/')
+def create_household(request):
+
+    householdform = HouseHoldForm()
+
+    return render(request, 'household/create-household.html', {'householdform': householdform,
+                                                               })

@@ -14,25 +14,28 @@
             <th>{% if type == 'C' %}Case ID{% else %}Contact ID{% endif %}</th>
             <th>Name</th>
             <th>{% if type == 'C' %}DOB{% else %}DOB/Age{% endif %}</th>
-            <th>Address</th>
             <th>Status</th>
-            <th>Follow-up Date</th>
+            <th>Last Follow-up Date</th>
             <th>Active</th>
+            <th>Assigned to</th>
           </tr>
         </thead>
         <tbody>
         {% for x in cases %}
           <tr>
             <td style="transform: rotate(0);"><a class="stretched-link" href="/TracingApp/info/{{ type }}/{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}">{{ type }}{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}</a></td>
-            <td>{{ x.person.first }} {{ x.case.person.last }}</td>
+            <td>{{ x.person.first }} {{ x.person.last }}</td>
             <td>{{ x.person.dob }}</td>
-            <td>{{ x.person.address.street }}
-                {% if x.person.address.street2 %}
-                    {{ x.person.address.street2 }}
-                {% endif %} {{ x.person.address.city }}, {{ x.person.address.state }} {{ x.person.address.post_code }}</td>
             <td>{{ x.status.status }}</td>
-            <td>{{ x.next_follow }}</td>
+            <td>{{ x.last_follow }}</td>
             <td>{% if x.active %}Open{% else %}Closed{% endif %}</td>
+            <td>{% for assign in assigns %}
+                {% if type == 'C' %}
+                    {% if assign.case_id == x.case_id and assign.status == 0 %}{{ assign.user }}{% endif %}
+                {% else %}
+                    {% if assign.contact_id == x.contact_id and assign.status == 0 %}{{ assign.user }}{% endif %}
+                {% endif %}
+                {% endfor %}</td>
           </tr>
         {% endfor %}
         </tbody>

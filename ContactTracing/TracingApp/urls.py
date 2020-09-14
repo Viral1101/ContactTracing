@@ -14,4 +14,5 @@ urlpatterns = [
     path('add-contact/<str:cttype>/<int:pid>', views.add_contact, name='add-contact'),
     path('follow-up/<str:cttype>/<int:pid>', views.followup, name='follow-up'),
     path('assign', views.assign_contacts_cases, name='assign'),
+    path('household/new', views.create_household, name='new-household')
 ]

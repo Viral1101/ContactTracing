@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content2 %}
+
+    {% load crispy_forms_tags %}
+{% load static %}
+<script type="text/javascript" src="{% static "admin/js/jquery.min.js" %}"></script>
+<script type="text/javascript" src="{% static "admin/js/jquery.init.js" %}"></script>
+<form method="post">
+
+    {% csrf_token %}
+
+    {% crispy householdform %}
+
+</form>
+
+{% endblock %}

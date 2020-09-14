@@ -242,7 +242,7 @@ class Contacts(models.Model):
     contact_id = models.AutoField(primary_key=True)
     person = models.ForeignKey('Persons', models.DO_NOTHING)
     init_exposure = models.DateField(blank=True, null=True)
-    can_quarantine = models.IntegerField(blank=True, null=True)
+    can_quarantine = models.BooleanField(blank=True, null=True)
     tent_qt_end = models.DateField(blank=True, null=True)
     status = models.ForeignKey('Statuses', models.DO_NOTHING)
     last_follow = models.DateField(blank=True, null=True)
@@ -646,3 +646,21 @@ class CaseLinks(models.Model):
     class Meta:
         managed = True
         db_table = 'case_links'
+
+
+class HouseHolds(models.Model):
+    household_id = models.AutoField(primary_key=True)
+
+    class Meta:
+        managed = True
+        db_table = 'households'
+
+
+class HHPersonJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    household = models.ForeignKey(HouseHolds, models.DO_NOTHING)
+    person = models.ForeignKey(Persons, models.DO_NOTHING)
+
+    class Meta:
+        managed = True
+        db_table = 'hh_person_join'

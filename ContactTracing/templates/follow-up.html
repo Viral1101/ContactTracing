@@ -33,14 +33,17 @@
 <div id="empty_phone" style="display:none">
     {% crispy phoneforms.empty_form phoneformhelper %}
 </div>
+<div id="empty_email" style="display:none">
+    {% crispy emailforms.empty_form emailformhelper %}
+</div>
 <div id="empty_symptom" style="display:none">
-    {% crispy symptomforms.empty_form symptomloghelper %}
+    {% crispy new_symptomforms.empty_form symptomloghelper %}
 </div>
 
     <p></p>
     <div class="form-row">
         <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />
-        <input class="btn btn-danger col-md-3 mr-md-3" type="submit" name="cancel" value="Cancel" />
+        <a href="/TracingApp/assignments" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
     </div>
 
 </form>
@@ -54,7 +57,7 @@
 
     $('#button-id-add_phone').click(function() {
 	var form_idx = $('#id_phone-TOTAL_FORMS').val();
-	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
+	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').parent().parent().parent().append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
 	$('#id_phone-TOTAL_FORMS').val(parseInt(form_idx) + 1);
 });
 
@@ -66,7 +69,7 @@
 
     $('#button-id-add_email').click(function() {
 	var form_idx = $('#id_email-TOTAL_FORMS').val();
-	$('#div_id_email-'+(parseInt(form_idx)-1)+'-street').parent().parent().parent().append($('#empty_email').html().replace(/__prefix__/g, form_idx));
+	$('#div_id_email-'+(parseInt(form_idx)-1)+'-email_address').parent().parent().parent().append($('#empty_email').html().replace(/__prefix__/g, form_idx));
 	$('#id_email-TOTAL_FORMS').val(parseInt(form_idx) + 1);
 });
 

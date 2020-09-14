@@ -9,6 +9,22 @@ import datetime
 import re
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Button
+from django.contrib.admin.widgets import FilteredSelectMultiple
+
+
+class HouseHoldForm(forms.Form):
+    people = forms.ModelMultipleChoiceField(queryset=Persons.objects.all(),
+                                            label=_('Select people in this household'),
+                                            required=False,
+                                            widget=FilteredSelectMultiple(
+                                                  _('people'),
+                                                  False,
+                                            ))
+
+    class Media:
+        class Media:
+            css = {'all': ('/static/admin/css/widgets.css',), }
+            js = ('/admin/jsi18n/',)
 
 
 class NewPhoneNumberForm(forms.ModelForm):
@@ -30,7 +46,6 @@ class NewPhoneNumberForm(forms.ModelForm):
             print(self.cleaned_data['phone_id'])
 
 
-
 class AddressesForm(forms.ModelForm):
     address_id = forms.IntegerField(widget=forms.HiddenInput, required=False)
     street = forms.CharField(required=False)
@@ -42,7 +57,9 @@ class AddressesForm(forms.ModelForm):
     def clean_post_code(self):
         data = self.cleaned_data['post_code']
 
-        if not re.search('\d{5}$', data):
+        if data == '':
+            pass
+        elif not re.search('\d{5}$', data):
             raise ValidationError(_('Invalid zip - Zip should be in the form #####'))
 
         return data
@@ -405,9 +422,66 @@ class InvestigationCaseForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if cleaned_data['status'] != 7:
+        if cleaned_data.get('status') != Statuses.objects.get(status_id=7):
             cleaned_data['last_follow'] = datetime.date.today()
         return cleaned_data
+
+
+class FollowUpCaseForm(forms.ModelForm):
+    active = forms.BooleanField(widget=forms.HiddenInput(), required=False)
+    confirmed = forms.BooleanField(required=False)
+    # last_follow = forms.DateField(widget=DatePickerInput())
+    # release_date = forms.DateField(widget=DatePickerInput())
+    rel_pcp = forms.BooleanField(required=False)
+    iso_pcp = forms.BooleanField(required=False)
+    tent_release = forms.DateField(widget=DatePickerInput())
+    reqs_pcp = forms.CharField(required=False)
+
+    class Meta:
+        model = Cases
+        exclude = ['test',
+                   'person',
+                   'old_case_no',
+                   'release_date',
+                   ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.fields['rel_pcp'].label = 'Released by PCP'
+        self.fields['iso_pcp'].label = 'Isolation Order by PCP'
+        self.fields['reqs_pcp'].label = 'PCP requirements for release'
+        self.fields['confirmed'].label = 'Positive Test Confirmation'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('iso_pcp', css_class='form-group col-md-4 mb-0'),
+                Column('reqs_pcp', css_class='form-group col-md-4 mb-0'),
+                Column('rel_pcp', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('confirmed', css_class='form-group col-md-4 mb-0'),
+                Column('tent_release', css_class='form-group col-md-4 mb-0'),
+                Column('status', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Column('active', css_class='form-group col-md-4 mb-0'),
+        )
+
+    def clean_status(self):
+        data = self.cleaned_data['status']
+        print(data)
+        print(Statuses.objects.get(status_id=1))
+        if data == Statuses.objects.get(status_id=1):
+            raise ValidationError(_('Invalid case status - Case should not still need investigation'))
+        return data
+    #
+    # def clean_last_follow(self):
+    #     data = datetime.date.today()
+    #     return data;
 
 
 class CaseForm(forms.ModelForm):
@@ -424,7 +498,6 @@ class CaseForm(forms.ModelForm):
         exclude = ['test',
                    'person',
                    'old_case_no',
-                   'last_follow',
                    'release_date',
                    'tent_release',
                    ]
@@ -448,6 +521,10 @@ class CaseForm(forms.ModelForm):
         if data == Statuses.objects.get(status_id=1):
             raise ValidationError(_('Invalid case status - Case should not still need investigation'))
         return data
+    #
+    # def clean_last_follow(self):
+    #     data = datetime.date.today()
+    #     return data;
 
 
 class ContactTraceLogForm(forms.ModelForm):
@@ -486,7 +563,7 @@ class ContactTraceLogForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         cleaned_data['log_date'] = datetime.date.today()
-        cleaned_data['user'] = AuthUser.objects.get(id=self.user.id)
+        cleaned_data['user'] = self.user
         print(cleaned_data)
         return cleaned_data
 
@@ -505,7 +582,7 @@ class NewTraceLogForm(forms.ModelForm):
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.user = user
+        # self.user = user
         self.fields['user'].queryset = AuthUser.objects.filter(id=user.id)
         self.fields['user'].widget.attrs['readonly'] = True
         self.fields['log_date'].widget.attrs['readonly'] = True
@@ -527,7 +604,7 @@ class NewTraceLogForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         cleaned_data['log_date'] = datetime.date.today()
-        cleaned_data['user'] = self.user
+        # cleaned_data['user'] = self.user
         print(cleaned_data)
         return cleaned_data
 
@@ -715,11 +792,12 @@ class NewSymptomLogForm(forms.ModelForm):
                   'user',
                   ]
 
-    def __init__(self, user, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.user = user
-        self.fields['user'].queryset = AuthUser.objects.filter(id=user.id)
+        # self.user = user
+        # self.fields['user'].queryset = AuthUser.objects.filter(id=user.id).first()
         # self.fields['user'].queryset = AuthUser.objects.filter(id=self.user)
+        # self.fields['user'].queryset = self.user
         self.fields['user'].widget.attrs['readonly'] = True
         self.fields['rec_date'].widget.attrs['readonly'] = True
         self.fields['user'].widget.attrs['disabled'] = True
@@ -759,7 +837,7 @@ class NewSymptomLogForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         cleaned_data['rec_date'] = datetime.date.today()
-        cleaned_data['user'] = self.user
+        # cleaned_data['user'] = self.user
         print(cleaned_data)
         return cleaned_data
 
@@ -1091,7 +1169,8 @@ class FollowUpContactForm(forms.ModelForm):
                       (0, 'Yes'),
                       (1, 'No'),
                       ]
-    can_quarantine = forms.TypedChoiceField(choices=can_qt_options, required=False)
+    can_quarantine = forms.TypedChoiceField(choices=can_qt_options, required=False, coerce=int)
+    active = forms.BooleanField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
         model = Contacts
@@ -1114,29 +1193,35 @@ class FollowUpContactForm(forms.ModelForm):
             Row(
                 Column('can_quarantine', css_class='form-group col-md-4 mb-0'),
                 Column('status', css_class='form-group col-md-4 mb-0'),
+                Column('active', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
         )
 
-    def clean_can_quarantine(self):
-        data = self.cleaned_data['can_quarantine']
-        if data == '':
-            data = None
-        return data
+    # def clean_last_follow(self):
+    #     # data = self.cleaned_data['last_follow']
+    #     data = datetime.date.today()
+    #     return data
 
-    def clean_active(self):
-        data = self.cleaned_data['active']
-        print("Cleaning FollowupContact, data is %s" % data)
-        if data is None:
-            data = True
-        return data
+    # def clean_can_quarantine(self):
+    #     data = self.cleaned_data['can_quarantine']
+    #     if data == '':
+    #         data = None
+    #     return data
+    #
+    # def clean_active(self):
+    #     data = self.fields['active'].initial
+    #     print("Cleaning FollowupContact, data is %s" % data)
+    #     if data is None:
+    #         data = True
+    #     return data
 
-    def clean(self):
-        cleaned_data = super().clean()
-        # if cleaned_data['mark_as_contacted']:
-        #     cleaned_data['last_follow'] = datetime.date.today()
-        # cleaned_data['user'] = AuthUser.objects.get(id=self.user.id)
-        return cleaned_data
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #     # if cleaned_data['mark_as_contacted']:
+    #     #     cleaned_data['last_follow'] = datetime.date.today()
+    #     # cleaned_data['user'] = AuthUser.objects.get(id=self.user.id)
+    #     return cleaned_data
 
 
 class TestFormHelper(FormHelper):
