@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf.urls import url
+from django import views as django_views
 # from .views import NewCaseForm
 
 urlpatterns = [
@@ -14,5 +16,6 @@ urlpatterns = [
     path('add-contact/<str:cttype>/<int:pid>', views.add_contact, name='add-contact'),
     path('follow-up/<str:cttype>/<int:pid>', views.followup, name='follow-up'),
     path('assign', views.assign_contacts_cases, name='assign'),
-    path('household/new', views.create_household, name='new-household')
+    path('household/new', views.create_household, name='new-household'),
+    url(r'^jsi18n/$', django_views.i18n.JavaScriptCatalog.as_view(), name='jsi18n')
 ]

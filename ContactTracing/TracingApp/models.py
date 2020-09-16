@@ -186,7 +186,7 @@ class Cases(models.Model):
     case_id = models.AutoField(primary_key=True)
     person = models.ForeignKey('Persons', models.DO_NOTHING)
     test = models.ForeignKey('Tests', models.DO_NOTHING)
-    confirmed = models.IntegerField(blank=True, null=True)
+    confirmed = models.BooleanField(default=False, null=True)
     status = models.ForeignKey('Statuses', models.DO_NOTHING)
     tent_release = models.DateField(blank=True, null=True)
     iso_pcp = models.BooleanField(blank=True, null=True)
@@ -197,6 +197,7 @@ class Cases(models.Model):
     active = models.BooleanField()
     released = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
     old_case_no = models.TextField(blank=True, null=True)
+    probable = models.BooleanField(default=False)
 
     class Meta:
         # managed = False

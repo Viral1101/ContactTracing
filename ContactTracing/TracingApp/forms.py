@@ -22,9 +22,15 @@ class HouseHoldForm(forms.Form):
                                             ))
 
     class Media:
-        class Media:
-            css = {'all': ('/static/admin/css/widgets.css',), }
-            js = ('/admin/jsi18n/',)
+        css = {
+            'all': ('/static/admin/css/widgets.css',),
+        }
+        js = ('/admin/jsi18n',)
+
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.form_method = 'post'
+        # self.form_tag = False
 
 
 class NewPhoneNumberForm(forms.ModelForm):
@@ -436,6 +442,7 @@ class FollowUpCaseForm(forms.ModelForm):
     iso_pcp = forms.BooleanField(required=False)
     tent_release = forms.DateField(widget=DatePickerInput())
     reqs_pcp = forms.CharField(required=False)
+    probable = forms.BooleanField(required=False)
 
     class Meta:
         model = Cases
@@ -463,7 +470,8 @@ class FollowUpCaseForm(forms.ModelForm):
                 css_class='form-row'
             ),
             Row(
-                Column('confirmed', css_class='form-group col-md-4 mb-0'),
+                Column('confirmed', css_class='form-group col-md-2 mb-0'),
+                Column('probable', css_class='form-group col-md-2 mb-0'),
                 Column('tent_release', css_class='form-group col-md-4 mb-0'),
                 Column('status', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'

@@ -114,7 +114,7 @@ def info(request, cttype, pid):
         sx_ids = sxs.values('sx_id')
         # symptoms = SxLogJoin.objects.filter(sx_id__in=sx_ids)
         # sx_logs = SxLog.objects.filter(log_id__in=symptoms)
-        symptoms = SxLog.objects.filter(log_id__in=sx_ids)
+        symptoms = SxLog.objects.filter(log_id__in=sx_ids).order_by('symptom', 'rec_date')
         sx_logs = symptoms
     else:
         sx_ids = None
@@ -916,6 +916,10 @@ def followup(request, cttype, pid):
                                               last_follow=today,
                                               active=1,
                                               )
+
+                        if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=9):
+                            upgraded_case.probable = True
+
                         upgraded_case.save()
 
                         all_symptoms = ContactSxJoin.objects.filter(case_id=pid).values('sx_id')
@@ -1103,7 +1107,34 @@ def assign_contacts_cases(request):
 @login_required(login_url='/accounts/login/')
 def create_household(request):
 
-    householdform = HouseHoldForm()
+    if request.method == 'POST':
+
+        householdform = HouseHoldForm(request.POST)
+
+        # print("HH form valid?")
+        # print(householdform.is_valid())
+        if householdform.is_valid():
+            persons = householdform.cleaned_data['people']
+
+            this_household = HouseHolds()
+            this_household.save()
+
+            for person in persons:
+                # print(person.person_id)
+                this_hh_person = HHPersonJoin(household=this_household, person=person)
+                this_hh_person.save()
+
+            if 'save_and_exit' in request.POST:
+                # print('save_exit')
+                return redirect('household')
+            elif 'save_and_add_contacts' in request.POST:
+                # print('save_contacts')
+                return redirect('/TracingApp/household/new')
+            else:
+                return redirect('assignments')
+
+    else:
+        householdform = HouseHoldForm()
 
     return render(request, 'household/create-household.html', {'householdform': householdform,
                                                                })

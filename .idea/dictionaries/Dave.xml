@@ -1,8 +1,17 @@
 <component name="ProjectDictionaryState">
   <dictionary name="Dave">
     <words>
+      <w>assigncases</w>
+      <w>assigncontacts</w>
+      <w>assignform</w>
+      <w>assignformset</w>
+      <w>caseassignments</w>
+      <w>contactassign</w>
+      <w>contactassignments</w>
+      <w>contactformset</w>
       <w>defs</w>
       <w>endblock</w>
+      <w>householdform</w>
       <w>rcvd</w>
       <w>suff</w>
     </words>

@@ -16,8 +16,8 @@
         <h5 class="card-title">{% if type == 'CT' %}Last Exposure{% else %}Tentative Release Date{% endif %}</h5>
       </div>
       <div class="card-body">
-          <p class="card-text">{% if case.tent_rel or case.last_exposure %}
-                {{ case.tent_rel }}
+          <p class="card-text">{% if case.tent_release or case.last_exposure %}
+                {{ case.tent_release }}
                 {{ case.last_exposure }}
 
               {% endif %}</p>

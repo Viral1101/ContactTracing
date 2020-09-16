@@ -3,15 +3,25 @@
 {% block content2 %}
 
     {% load crispy_forms_tags %}
-{% load static %}
-<script type="text/javascript" src="{% static "admin/js/jquery.min.js" %}"></script>
-<script type="text/javascript" src="{% static "admin/js/jquery.init.js" %}"></script>
-<form method="post">
+<!--<div class="d-flex justify-content-left">-->
+    <form method="post" class="d-flex justify-content-center">
+        <div class="form-group">
+            <div class="row">
+                {% crispy householdform %}
+            </div>
 
-    {% csrf_token %}
+            <script type="text/javascript" src="{% url 'jsi18n' %}"></script>
 
-    {% crispy householdform %}
+            <p></p>
 
-</form>
+            <div class="row justify-content-center">
+                <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />
+                <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_create_another" value="Save and create another" />
+                <a href="/TracingApp/households" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
+            </div>
+        </div>
+
+    </form>
+<!--</div>-->
 
 {% endblock %}
