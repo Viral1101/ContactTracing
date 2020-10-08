@@ -7,6 +7,7 @@
             <th>PCHD Received</th>
             <th>Result</th>
             <th>Test Type</th>
+            <th>Information Source</th>
             <th>Logged by</th>
         </tr>
     </thead>
@@ -15,8 +16,9 @@
         <td>{{ testform.sample_date }}</td>
         <td>{{ testform.result_date }}</td>
         <td>{{ testform.rcvd_date }}</td>
-        <td>{% if testform.result == 1 %}Positive{% else %}Negative{% endif %}</td>
+        <td>{{ testform.result }}</td>
         <td>{{ testform.test_type }}</td>
+        <td>{{ testform.source.source }}</td>
         <td>{{ testform.user}} {{ testform.logged_date }}</td>
     </tr>
     {% endfor %}

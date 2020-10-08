@@ -17,5 +17,7 @@ urlpatterns = [
     path('follow-up/<str:cttype>/<int:pid>', views.followup, name='follow-up'),
     path('assign', views.assign_contacts_cases, name='assign'),
     path('household/new', views.create_household, name='new-household'),
-    url(r'^jsi18n/$', django_views.i18n.JavaScriptCatalog.as_view(), name='jsi18n')
+    path('search/', views.search_results, name='search_results'),
+    url(r'^jsi18n/$', django_views.i18n.JavaScriptCatalog.as_view(), name='jsi18n'),
+    url(r'^password/$', views.change_password, name='change_password'),
 ]

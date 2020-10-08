@@ -67,12 +67,12 @@ class Assignments(models.Model):
     contact = models.ForeignKey('Contacts', models.DO_NOTHING, blank=True, null=True)
     outbreak = models.ForeignKey('Outbreaks', models.DO_NOTHING, blank=True, null=True)
     assign_type = models.ForeignKey(AssignmentType, models.DO_NOTHING, blank=True, null=True)
-    status = models.BooleanField()
     user = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    status = models.ForeignKey('AssignmentStatus', models.DO_NOTHING)
     date_done = models.DateField(blank=True, null=True)
 
     class Meta:
-        # managed = False
+        managed = True
         db_table = 'assignments'
 
 
@@ -198,9 +198,10 @@ class Cases(models.Model):
     released = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
     old_case_no = models.TextField(blank=True, null=True)
     probable = models.BooleanField(default=False)
+    able_to_isolate = models.ForeignKey('BooleanTable', models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        # managed = False
+        managed = True
         db_table = 'cases'
 
     def __str__(self):
@@ -239,6 +240,18 @@ class ContactSxJoin(models.Model):
         db_table = 'contact_sx_join'
 
 
+class BooleanTable(models.Model):
+    boolean_id = models.AutoField(primary_key=True)
+    boolean = models.CharField(max_length=12)
+
+    class Meta:
+        managed = True
+        db_table = 'boolean_table'
+
+    def __str__(self):
+        return self.boolean
+
+
 class Contacts(models.Model):
     contact_id = models.AutoField(primary_key=True)
     person = models.ForeignKey('Persons', models.DO_NOTHING)
@@ -247,13 +260,13 @@ class Contacts(models.Model):
     tent_qt_end = models.DateField(blank=True, null=True)
     status = models.ForeignKey('Statuses', models.DO_NOTHING)
     last_follow = models.DateField(blank=True, null=True)
-    # next_follow = models.DateField(blank=True, null=True)
     active = models.BooleanField()
     old_contact_no = models.TextField(blank=True, null=True)
     last_exposure = models.DateField(blank=True, null=True)
+    able_to_quarantine = models.ForeignKey(BooleanTable, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        # managed = False
+        managed = True
         db_table = 'contacts'
 
 
@@ -409,7 +422,7 @@ class PersonPhoneJoin(models.Model):
 
 class Phones(models.Model):
     phone_id = models.AutoField(primary_key=True)
-    phone_number = models.CharField(max_length=11)
+    phone_number = models.CharField(max_length=31)
 
     class Meta:
         # managed = False
@@ -587,13 +600,14 @@ class Tests(models.Model):
     sample_date = models.DateField(blank=True, null=True)
     result_date = models.DateField(blank=True, null=True)
     rcvd_date = models.DateField(blank=True, null=True)
-    result = models.IntegerField(blank=True, null=True)
+    result = models.ForeignKey('TestResults', models.DO_NOTHING, blank=True, null=True)
     test_type = models.ForeignKey(TestTypes, models.DO_NOTHING, blank=True, null=True)
     logged_date = models.DateField(blank=True, null=True)
     user = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
+    source = models.ForeignKey('TestSources', models.DO_NOTHING)
 
     class Meta:
-        # managed = False
+        managed = True
         db_table = 'tests'
 
 
@@ -665,3 +679,82 @@ class HHPersonJoin(models.Model):
     class Meta:
         managed = True
         db_table = 'hh_person_join'
+
+
+class CaseTestJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    case = models.ForeignKey(Cases, models.DO_NOTHING)
+    test = models.ForeignKey(Tests, models.DO_NOTHING)
+
+    class Meta:
+        managed = True
+        db_table = 'case_test_join'
+
+
+class ContactTestJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    contact = models.ForeignKey(Contacts, models.DO_NOTHING)
+    test = models.ForeignKey(Tests, models.DO_NOTHING)
+
+    class Meta:
+        managed = True
+        db_table = 'contact_test_join'
+
+
+class TestSources(models.Model):
+    source = models.CharField(max_length=42, default='Unknown')
+
+    class Meta:
+        managed = True
+        db_table = 'test_sources'
+
+    def __str__(self):
+        return self.source
+
+
+class TestResults(models.Model):
+    result_id = models.AutoField(primary_key=True)
+    result = models.CharField(max_length=15)
+
+    class Meta:
+        managed = True
+        db_table = 'test_results'
+
+    def __str__(self):
+        return self.result
+
+
+class AssignmentStatus(models.Model):
+    status_id = models.AutoField(primary_key=True)
+    status = models.CharField(max_length=15)
+
+    class Meta:
+        managed = True
+        db_table = 'assignment_statuses'
+
+    def __str__(self):
+        return self.status
+
+
+# class Exposures(models.model):
+#     exposure_id = models.AutoField(primary_key=True)
+#     initial_exposure = models.DateField(blank=True, null=True)
+#     last_exposure = models.DateField()
+#     quarantine_end = models.DateField()
+#     location = models.CharField(max_length=128)
+#     outbreak_id = models.ForeignKey(Outbreaks, models.DO_NOTHING, null=True)
+#     exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True)
+#
+#     class Meta:
+#         managed = True
+#         db_table = 'exposures'
+#
+#
+# class PersonExposureJoin(models.model):
+#     join_id = models.AutoField(primary_key=True)
+#     person_id = models.ForeignKey(Persons, models.DO_NOTHING, null=False)
+#     exposure_id = models.ForeignKey(Exposures, models.DO_NOTHING, null=False)
+#
+#     class Meta:
+#         managed = True
+#         db_table = 'person_exposure_join'

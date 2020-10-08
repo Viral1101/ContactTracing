@@ -1,49 +1,12 @@
-{% extends 'base.html' %}
-
-{% block title %}Add New{% endblock %}
-
-{% block content2 %}
-
-{% load crispy_forms_tags %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
-      <h1 class="h2">Create New Case</h1>
-</div>
-    <form method="post">
-        <div class="container flex-box">
-            {% if form.errors %}
-                <div class="card-body text-danger">
-                  <ul>
-                    {% for key,value in form.errors.items %}
-                    <li>{{ key|escape }} : {{ value|escape }}</li>
-                    {% endfor %}
-                  </ul>
-                </div>
-            {% endif %}
-        {% csrf_token %}
-<!--        {{ form.as_table }}-->
-            {{ personform.media }}
-            {{ addressform.media }}
-            {{ phoneform.media }}
-            {{ testform.media }}
-            {{ assignform.media }}
-        {% include 'add-new-patient-info.html' %}
-        {% include 'add-new-patient-contact-info.html' %}
-        {% include 'add-new-testing-information.html' %}
-        {% include 'add-new-assignment.html' %}
-        </div>
-        <div class="button"><input type="submit" value="Save"></div>
-    </form>
-
-<script>
-    // ==================================================
-//
+// ==================================================
+// 
 // jquery-input-mask-phone-number 1.0.14
 //
 // Licensed (The MIT License)
-//
+// 
 // Copyright © Raja Rama Mohan Thavalam <rajaram.tavalam@gmail.com>
 //
-// Last Updated On: 22/Aug/2020 IST  12:05 AM
+// Last Updated On: 22/Aug/2020 IST  12:05 AM 
 //
 // ==================================================
 
@@ -154,16 +117,6 @@
             });
 
         }
-
+        
     }
 }(jQuery));
-
-$(document).ready(function () {
-    $('#id_phone_number').usPhoneFormat({
-        format: '(xxx) xxx-xxxx',
-    });
-});
-
-</script>
-
-{% endblock %}

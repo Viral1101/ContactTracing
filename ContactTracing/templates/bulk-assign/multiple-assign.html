@@ -50,6 +50,7 @@
         </tbody>
       </table>
     </div>
+  <h1 class="h2">Assign Contacts</h1>
     <div class="table-responsive">
       <table class="table table-striped table-sm table-hover">
         <thead>
@@ -68,7 +69,7 @@
         {% for assign_ct, x in assigncontacts %}
           <tr>
             <td>{{ assign_ct.assign_box }}</td>
-            <td>C{{ x.contact_id }}</td>
+            <td>CT{{ x.contact_id }}</td>
             <td>{{ x.person.first }} {{ x.person.last }}</td>
             <td>{{ x.person.dob }}</td>
             <td>{{ x.person.age }}</td>

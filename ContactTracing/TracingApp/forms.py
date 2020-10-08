@@ -143,7 +143,7 @@ class PhoneForm(forms.ModelForm):
         self.helper.layout = Layout(
             Div(
                 Row(
-                    Column('phone_number', css_class='form-group col-md-4 mb-0'),
+                    Column('phone_number', css_class='form-group col-md-3 mb-0 phone'),
                     css_class='form-row'
                 )
             )
@@ -159,7 +159,7 @@ class PhoneFormHelper(FormHelper):
         self.layout = Layout(
             Div(
                 Row(
-                    Column('phone_number', css_class='form-group col-md-4 mb-0'),
+                    Column('phone_number', css_class='form-group col-md-3 mb-0 phone'),
                     css_class='form-row'
                 )
             )
@@ -1061,7 +1061,6 @@ class AddContactAddressHelper(FormHelper):
 
 class AddContactPhone(forms.ModelForm):
 
-    use_case_phone = forms.BooleanField(required=False)
     phone_number = forms.CharField(required=False)
 
     class Meta:
@@ -1079,9 +1078,43 @@ class AddContactPhone(forms.ModelForm):
                 Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
                 css_class='form-row'),
             Row(
-                Column('phone_number', css_class='form-group col-md-5 mb-0'),
+                Column('phone_number', css_class='form-group col-md-3 mb-0 phone'),
                 css_class='form-row'
             )
+        )
+
+
+class AddCasePhoneForContact(forms.Form):
+    use_case_phone = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
+                css_class='form-row'
+            ),
+        )
+
+
+class AddCaseRelation(forms.Form):
+
+    relation_to_case = forms.CharField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('relation_to_case', css_class='form-group col-md-5 mb-0'),
+                css_class='form-row'),
         )
 
 
@@ -1093,10 +1126,7 @@ class AddContactPhoneHelper(FormHelper):
         self.disable_csrf = True
         self.layout = Layout(
             Row(
-                Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
-                css_class='form-row'),
-            Row(
-                Column('phone_number', css_class='form-group col-md-5 mb-0'),
+                Column('phone_number', css_class='form-group col-md-3 mb-0 phone'),
                 css_class='form-row'
             )
         )
@@ -1254,6 +1284,30 @@ class TestFormHelper(FormHelper):
         )
 
 
+class NewTestFormHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        self.layout = Layout(
+            Div(
+                Row(
+                    Column('sample_date', css_class='form-group col-md-4 mb-0'),
+                    Column('result_date', css_class='form-group col-md-4 mb-0'),
+                    Column('rcvd_date', css_class='form-group col-md-4 mb-0'),
+                    css_class='form-row'
+                ),
+                Row(
+                    Column('result', css_class='form-group col-md-2 mb-0'),
+                    Column('test_type', css_class='form-group col-md-2 mb-0'),
+                    Column('source', css_class='form-group col-md-3 mb-0'),
+                    css_class='form-row'
+                ),
+            ),
+        )
+
+
 class GetTest(forms.ModelForm):
 
     sample_date = forms.DateField(widget=DatePickerInput(), required=False)
@@ -1305,21 +1359,37 @@ class NewTest(forms.ModelForm):
     sample_date = forms.DateField(widget=DatePickerInput(), required=False)
     result_date = forms.DateField(widget=DatePickerInput(), required=False)
     rcvd_date = forms.DateField(widget=DatePickerInput(), required=False)
-    result = forms.BooleanField()
+    result = forms.ModelChoiceField(required=False, queryset=TestResults.objects.all())
+    source = forms.ModelChoiceField(required=False, queryset=TestSources.objects.all())
     logged_date = forms.DateField(widget=forms.HiddenInput(), required=False)
+    user = forms.ModelChoiceField(widget=forms.HiddenInput(), queryset=AuthUser.objects.all(), required=False)
 
     class Meta:
         model = Tests
         fields = '__all__'
 
-    def __init__(self, user, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.user = user
-        self.fields['user'].queryset = AuthUser.objects.filter(id=user.id)
+        # self.fields['user'].queryset = AuthUser.objects.filter(id=user)
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         # self.logged_date = datetime.date.today()
+        self.helper.layout = Layout(
+            Row(
+                Column('sample_date', css_class='form-group col-md-4 mb-0'),
+                Column('result_date', css_class='form-group col-md-4 mb-0'),
+                Column('rcvd_date', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('result', css_class='form-group col-md-2 mb-0'),
+                Column('test_type', css_class='form-group col-md-2 mb-0'),
+                Column('source', css_class='form-group col-md-3 mb-0'),
+                css_class='form-row'
+            ),
+        )
 
     def clean_status(self):
         return False

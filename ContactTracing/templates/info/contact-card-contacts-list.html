@@ -40,7 +40,7 @@
                   <li class="list-group-item {% if not contact.contact.active %}bg-secondary{% endif %}">{{ contact.contact.status.status }}</li>
                     {% else %}
                   <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Isolating by PCP: {{ contact.case.iso_pcp }}</li>
-                  <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Tentative: {{ contact.case.tent_rel }}</li>
+                  <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Tentative: {{ contact.case.tent_release }}</li>
                   <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">Released: {{ contact.case.release_date }}</li>
                   <li class="list-group-item {% if not contact.case.active %}bg-secondary{% endif %}">{{ contact.case.status.status }}</li>
                     {% endif %}

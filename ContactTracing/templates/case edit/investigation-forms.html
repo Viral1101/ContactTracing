@@ -14,7 +14,8 @@
 <input type="button" name="add_email" value="Add Email" class="btn btn-info" id="button-id-add_email">
 <p></p>
 <label><h4>Test Information</h4></label>
-{% crispy testform %}
+{% crispy testforms testformhelper %}
+<input type="button" name="add_test" value="Add Test" class="btn btn-info" id="button-id-add_test">
 <p></p>
 <label><h4>Case Information</h4></label>
 {% crispy caseform %}
@@ -37,4 +38,7 @@
 </div>
 <div id="empty_symptom" style="display:none">
     {% crispy symptomlogforms.empty_form symptomloghelper %}
+</div>
+<div id="empty_test" style="display:none">
+    {% crispy testforms.empty_form testformhelper %}
 </div>
