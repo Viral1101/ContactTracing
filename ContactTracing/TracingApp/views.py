@@ -31,6 +31,8 @@ def assigns(request):
     as_contacts = assignments.filter(contact__contact_id__gte=0)
     outbreaks = assignments.filter(outbreak__outbreak_id__gte=0)
 
+    print(assignments)
+
     return render(request, 'home.html', {'types': types,
                                          'cases': as_cases,
                                          'contacts': as_contacts,
@@ -109,7 +111,7 @@ def info(request, cttype, pid):
         testquery = ContactTestJoin.objects.filter(contact_id=data)
         upstream_cases = None
         downstream_cases = None
-        assigned = Assignments.objects.filter(contact_id=pid, status=1).first
+        assigned = Assignments.objects.filter(contact_id=pid, status=1).first()
     else:
         raise Http404("Invalid case type")
 
@@ -185,6 +187,8 @@ def info(request, cttype, pid):
             return redirect('assignments')
         else:
             return redirect('assignments')
+
+    print(assigned)
 
     if assigned is not None:
         if assigned.user is not None:
@@ -304,7 +308,8 @@ def new_case(request):
         personform = NewPersonForm(request.POST, instance=person)
         addressform = NewAddressForm(request.POST, instance=address)
         phoneform = NewPhoneNumberForm(request.POST, instance=phone)
-        assignform = NewAssignment(request.POST, instance=assignment, initial={'status': 1, 'assign_type': 1})
+        assignform = NewAssignment(request.POST, instance=assignment, initial={'status': AssignmentStatus.objects.get(status_id=1),
+                                                                               'assign_type': 1})
 
         # today = datetime.date.today()
         testform = NewTest(request.POST, instance=test)
@@ -320,7 +325,7 @@ def new_case(request):
               (assignform_valid, testform_valid, personform_valid, addressform_valid, phoneform_valid))
         print(testform.cleaned_data['logged_date'])
 
-        print(testform.errors)
+        print(assignform.errors)
 
         if personform.is_valid()\
                 and addressform.is_valid()\
@@ -359,9 +364,10 @@ def new_case(request):
             newcase = Cases(person=new_person, active=True, status=needs_invest_status)
             # print("made newcase")
 
+            pending_status = AssignmentStatus.objects.get(status_id=1)
             newassign = Assignments(case=newcase,
                                     assign_type=assignform.cleaned_data['assign_type'],
-                                    status=assignform.cleaned_data['status'],
+                                    status=pending_status,
                                     user=assignform.cleaned_data['user'])
             # print("made newassign")
 
@@ -369,7 +375,7 @@ def new_case(request):
             # new_test.save()
             newcase.save()
             newassign.save()
-            assignform.save()
+            # assignform.save()
 
             case_test = CaseTestJoin(case=newcase, test=test)
             case_test.save()

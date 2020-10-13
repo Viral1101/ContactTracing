@@ -22,7 +22,7 @@
         <tbody>
         {% if cases %}
         {% for x in cases %}
-          {% if x.status == 0 %}
+          {% if x.status.status_id == 1 %}
           <tr style="transform: rotate(0);">
             <td>{{ x.assign_type.assign_type }}</td>
             <td><a href="info/C/{{ x.case_id }}" class="stretched-link">C{{ x.case_id }}</a></td>
@@ -53,7 +53,7 @@
         <tbody>
         {% if contacts %}
         {% for x in contacts %}
-        {% if x.status == 0 %}
+        {% if x.status.status_id == 1 %}
             <tr>
 
               <td>{{ x.assign_type.assign_type }}</td>

@@ -943,11 +943,13 @@ class SymptomForm(forms.ModelForm):
 
 
 class NewAssignment(forms.ModelForm):
+
+    # status = forms.CharField(widget=forms.HiddenInput(), required=False)
+
     class Meta:
         model = Assignments
         fields = ['user',
                   'assign_type',
-                  'status',
                   ]
 
 
