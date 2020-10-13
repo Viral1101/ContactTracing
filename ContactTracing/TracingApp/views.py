@@ -81,6 +81,9 @@ def contacts(request):
 
 @login_required(login_url='/accounts/login/')
 def info(request, cttype, pid):
+
+    pending = AssignmentStatus.objects.get(status_id=1)
+
     if cttype == "C":
         data = Cases.objects.get(case_id=pid)
         in_contacts = CaseContactJoin.objects.filter(case=data)
@@ -95,7 +98,7 @@ def info(request, cttype, pid):
         testquery = CaseTestJoin.objects.filter(case_id=data)
         upstream_cases = CaseLinks.objects.filter(developed_case=data)
         downstream_cases = CaseLinks.objects.filter(exposing_case=data)
-        assigned = Assignments.objects.filter(case_id=pid, status=1).first()
+        assigned = Assignments.objects.filter(case_id=pid, status=pending).first()
     elif cttype == "CT":
         data = Contacts.objects.filter(contact_id=pid).first()
         in_contacts = CaseContactJoin.objects.filter(contact=data)
@@ -111,7 +114,7 @@ def info(request, cttype, pid):
         testquery = ContactTestJoin.objects.filter(contact_id=data)
         upstream_cases = None
         downstream_cases = None
-        assigned = Assignments.objects.filter(contact_id=pid, status=1).first()
+        assigned = Assignments.objects.filter(contact_id=pid, status=pending).first()
     else:
         raise Http404("Invalid case type")
 
@@ -302,6 +305,8 @@ def new_case(request):
     # test.logged_date = datetime.date.today()
     # print(test.logged_date)
 
+    pending_status = AssignmentStatus.objects.get(status_id=1)
+
     if request.method == "POST":
 
         # print("POST")
@@ -364,7 +369,6 @@ def new_case(request):
             newcase = Cases(person=new_person, active=True, status=needs_invest_status)
             # print("made newcase")
 
-            pending_status = AssignmentStatus.objects.get(status_id=1)
             newassign = Assignments(case=newcase,
                                     assign_type=assignform.cleaned_data['assign_type'],
                                     status=pending_status,
@@ -386,7 +390,7 @@ def new_case(request):
         personform = NewPersonForm(instance=person)
         addressform = NewAddressForm(instance=address, initial={'state':'MO'})
         phoneform = NewPhoneNumberForm(instance=phone)
-        assignform = NewAssignment(instance=assignment, initial={'status': 1, 'assign_type': 1})
+        assignform = NewAssignment(instance=assignment, initial={'status': pending_status, 'assign_type': 1})
         testform = NewTest(instance=test)
 
     return render(request, 'add-new-case.html', {'personform': personform,
@@ -564,9 +568,11 @@ def case_investigation(request, cttype, pid):
 
             # Mark the assignment as done with the date
 
-            this_assignment = Assignments.objects.filter(case=this_case, user=user, status=1).first()
+            pending = AssignmentStatus.objects.get(status_id=1)
+            this_assignment = Assignments.objects.filter(case=this_case, user=user, status=pending).first()
             if this_assignment is not None:
-                this_assignment.status = 2
+                done_status = AssignmentStatus.objects.get(status_id=2)
+                this_assignment.status = done_status
                 this_assignment.date_done = datetime.date.today()
                 this_assignment.save()
 
@@ -830,6 +836,8 @@ def add_contact(request, cttype, pid):
 @login_required(login_url='/accounts/login/')
 def followup(request, cttype, pid):
 
+    pending = AssignmentStatus.objects.get(status_id=1)
+
     if cttype == 'C':
         case = get_object_or_404(Cases, case_id=pid)
         symptom_query = CaseSxJoin.objects.filter(case_id=case)
@@ -837,7 +845,7 @@ def followup(request, cttype, pid):
         test = case.test_id
         test_query = CaseTestJoin.objects.filter(case_id=case)
         user = AuthUser.objects.get(id=request.user.id)
-        this_assignment, a_created = Assignments.objects.get_or_create(case=case, user=user, status=1)
+        this_assignment, a_created = Assignments.objects.get_or_create(case=case, user=user, status=pending)
     elif cttype == 'CT':
         case = get_object_or_404(Contacts, contact_id=pid)
         symptom_query = ContactSxJoin.objects.filter(case_id=case)
@@ -845,7 +853,7 @@ def followup(request, cttype, pid):
         test = 0
         test_query = ContactTestJoin.objects.filter(contact_id=case)
         user = AuthUser.objects.get(id=request.user.id)
-        this_assignment, a_created = Assignments.objects.get_or_create(contact=case, user=user, status=1)
+        this_assignment, a_created = Assignments.objects.get_or_create(contact=case, user=user, status=pending)
     else:
         return Http404("Invalid type.")
 
@@ -1100,9 +1108,11 @@ def followup(request, cttype, pid):
             print(this_caseform.active)
             this_caseform.save()
 
+            done_status = AssignmentStatus.objects.get(status_id=2)
+
             if a_created:
                 this_assignment.assign_type = 4
-            this_assignment.status = 2
+            this_assignment.status = done_status
             this_assignment.date_done = datetime.date.today()
             this_assignment.save()
 
