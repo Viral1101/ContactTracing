@@ -5,6 +5,25 @@
 <div class="container-fluid">
     {% if user.is_authenticated %}
     {% include 'base-dash.html' %}
+    {% if messages %}
+        {% for message in messages %}
+        <div role="alert" aria-live="assertive" aria-atomic="true" class="toast" data-autohide="true" data-delay="5000">
+          <div class="toast-header bg-{{ message.tags }}">
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="toast-body bg-{{ message.tags }} text-{% if message.tags == 'success' %}white{% endif %}">
+            {{ message }}
+          </div>
+        </div>
+        {% endfor %}
+    <script>
+        $(document).ready(function(){
+            $('.toast').toast('show');
+        });
+    </script>
+    {% endif %}
 
       {% block content2 %}
       {% endblock %}

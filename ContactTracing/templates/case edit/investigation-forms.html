@@ -35,6 +35,13 @@
 </div>
 <div id="empty_phone" style="display:none" class="row">
     {% crispy phoneforms.empty_form phoneformhelper %}
+    <script>
+        $(document).ready(function () {
+        $('.phone').find("input").usPhoneFormat({
+            format: '(xxx) xxx-xxxx',
+        });
+    });
+    </script>
 </div>
 <div id="empty_symptom" style="display:none">
     {% crispy symptomlogforms.empty_form symptomloghelper %}

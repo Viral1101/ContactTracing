@@ -384,6 +384,7 @@ def new_case(request):
             case_test = CaseTestJoin(case=newcase, test=test)
             case_test.save()
 
+            messages.success(request, 'Case C%s created for %s %s' % (newcase.case_id, new_person.first, new_person.last))
             return redirect('assignments')
 
     else:
@@ -796,6 +797,11 @@ def add_contact(request, cttype, pid):
                         #     No Symptoms to record
                         pass
 
+            messages.success(request, "Contact CT%s:%s %s added to Case C%s." % (this_contact.contact_id,
+                                                                                 this_person.first,
+                                                                                 this_person.last,
+                                                                                 case.case_id))
+
             if 'save_and_exit' in request.POST:
                 return redirect('info', cttype=cttype, pid=pid)
             elif 'save_and_add_another' in request.POST:
@@ -1093,7 +1099,8 @@ def followup(request, cttype, pid):
                 if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=11) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or\
-                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13):
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or\
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14):
 
                     print("Secondary, by status:")
                     print(caseform.cleaned_data['status'])
@@ -1187,6 +1194,8 @@ def assign_contacts_cases(request):
 
     users = AuthUser.objects.filter(id__gt=0)
 
+    pending_status = AssignmentStatus.objects.get(status_id=1)
+
     if request.method == 'POST':
         # print('POST')
 
@@ -1216,7 +1225,7 @@ def assign_contacts_cases(request):
                         # print('checked box')
                         this_assign = Assignments(user=assignform.cleaned_data['user'],
                                                   case=cases[i],
-                                                  status=1,
+                                                  status=pending_status,
                                                   assign_type=assignform.cleaned_data['assign_type'])
                         this_assign.save()
                 i = i + 1
@@ -1229,7 +1238,7 @@ def assign_contacts_cases(request):
                         # print('checked box')
                         this_assign = Assignments(user=assignform.cleaned_data['user'],
                                                   contact=contacts[j],
-                                                  status=1,
+                                                  status=pending_status,
                                                   assign_type=assignform.cleaned_data['assign_type'])
                         this_assign.save()
                 j = j + 1
