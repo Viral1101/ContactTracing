@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content2 %}
+
+    {% load crispy_forms_tags %}
+<!--<div class="d-flex justify-content-left">-->
+    <form method="post" class="d-flex justify-content-center">
+        <div class="form-group">
+            <div class="row">
+                {% crispy caselinkform %}
+            </div>
+
+            <script type="text/javascript" src="{% url 'jsi18n' %}"></script>
+
+            <p></p>
+
+            <div class="row justify-content-center">
+                <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Continue" />
+                <a href="/TracingApp/households" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
+            </div>
+        </div>
+
+    </form>
+<!--</div>-->
+
+{% endblock %}

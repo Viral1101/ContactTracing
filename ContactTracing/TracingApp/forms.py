@@ -8,8 +8,92 @@ from dateutil.relativedelta import relativedelta
 import datetime
 import re
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div, Button
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, Button, HTML
+from crispy_forms.bootstrap import InlineRadios
 from django.contrib.admin.widgets import FilteredSelectMultiple
+
+
+class CaseLinkForm(forms.Form):
+    cases = forms.ModelMultipleChoiceField(queryset=Cases.objects.all(),
+                                            label=_('Select cases in this cluster'),
+                                            required=False,
+                                            widget=FilteredSelectMultiple(
+                                                  _('cases'),
+                                                  False,
+                                            ))
+
+    class Media:
+        css = {
+            'all': ('/static/admin/css/widgets.css',),
+        }
+        js = ('/admin/jsi18n',)
+
+
+class ClusterEditForm(forms.ModelForm):
+    is_index = forms.BooleanField(required=False)
+    last_exposed = forms.DateField(widget=DatePickerInput(), required=False)
+
+    class Meta:
+        model = ClusterCaseJoin
+        exclude = {'index_case',
+                   'associated_contact',
+                   'cluster'
+                   }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.fields['case'].disabled = True
+        self.form_tag = False
+        self.disable_csrf = True
+        self.helper.layout = Layout(
+            Column(
+                Div(
+                    Row(
+                        Column('is_index', css_class='form-group col-md-1 mb-0 make_radio'),
+                        Column('case', css_class='form-group col-md-4 mb-0'),
+                        Column('last_exposed', css_class='form-group col-md-3 mb-0'),
+                        Column('details', css_class='form-group col-md-4 mb-0'),
+                        css_class='form-row',
+                    ),
+                    Row(
+                        HTML(""""<p>"""),
+                        css_class='form-row',
+                    )
+                )
+            )
+        )
+
+
+class ClusterEditForm_old(forms.Form):
+
+    def __init__(self, *args, **kwargs):
+        self.cluster = kwargs.get('cluster', None)
+        del kwargs['cluster']
+        super(ClusterEditForm, self).__init__(*args, **kwargs)
+        qs = ClusterCaseJoin.objects.filter(cluster=self.cluster)
+        self.fields['case'] = forms.ChoiceField(label='Select the index case:',
+                                                choices=[(q.case.case_id, q.case) for q in qs],
+                                                widget=forms.RadioSelect)
+        # self.fields['details'] = forms.ChoiceField(widget=forms.Textarea, required=False)
+        # self.fields['last_exposed'] = forms.DateField(widget=DatePickerInput(), required=False)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.layout = Layout(
+            Column(
+                Row(
+                    Column('case', css_class='form-group col-md-12 mb-0'),
+                    # Column('last_exposed', css_class='form-group col-md-4 mb-0'),
+                    css_class='form-row'),
+                Row(
+                    Column('details', css_class='form-group col-md-12 mb-0')
+                    , css_class='form-row'),
+                css_class='form-group col-md-12 mb-0'
+            )
+        )
+
+        # print(cases)
 
 
 class HouseHoldForm(forms.Form):
@@ -320,9 +404,14 @@ class NewPersonForm(forms.ModelForm):
 
     def clean_age(self):
         data = self.cleaned_data['age']
+        try:
+            dob = self.cleaned_data['dob']
+        except KeyError:
+            dob = None
 
         if not data:
-            data = relativedelta(datetime.date.today(), self.cleaned_data['dob']).years
+            if dob:
+                data = relativedelta(datetime.date.today(), dob).years
 
         return data
 
@@ -370,11 +459,12 @@ class NewPersonForm(forms.ModelForm):
 class InvestigationCaseForm(forms.ModelForm):
     active = forms.BooleanField(required=False)
     confirmed = forms.BooleanField(required=False)
+    old_case_no = forms.CharField(max_length=15, required=False)
     # last_follow = forms.DateField(widget=DatePickerInput())
-    # release_date = forms.DateField(widget=DatePickerInput())
+    release_date = forms.DateField(widget=DatePickerInput(), required=False)
     rel_pcp = forms.BooleanField(required=False)
     iso_pcp = forms.BooleanField(required=False)
-    # tent_release = forms.DateField(widget=DatePickerInput())
+    tent_release = forms.DateField(widget=DatePickerInput())
     reqs_pcp = forms.CharField(required=False)
     # release_date = forms.DateField(widget=DatePickerInput)
     last_follow = forms.DateField(required=False, widget=forms.HiddenInput)
@@ -384,9 +474,9 @@ class InvestigationCaseForm(forms.ModelForm):
             model = Cases
             exclude = ['test',
                        'person',
-                       'old_case_no',
-                       'release_date',
-                       'tent_release',
+                       # 'old_case_no',
+                       # 'release_date',
+                       # 'tent_release',
                        ]
 
     def __init__(self, *args, **kwargs):
@@ -395,6 +485,7 @@ class InvestigationCaseForm(forms.ModelForm):
         self.fields['iso_pcp'].label = 'Isolation Order by PCP'
         self.fields['reqs_pcp'].label = 'PCP requirements for release'
         self.fields['confirmed'].label = 'Positive Test Confirmation'
+        self.fields['old_case_no'].label = 'Old ID'
         self.fields['last_follow'].disabled = True
         # self.fields['tent_release'].label = 'Tentative Release Date'
         self.form_method = 'post'
@@ -403,19 +494,24 @@ class InvestigationCaseForm(forms.ModelForm):
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
             Row(
-                Column('confirmed', css_class='form-group col-md-2 mb-0'),
-                Column('active', css_class='form-group col-md-2 mb-0'),
-                Column('status', css_class='form-group col-md-4 mb-0'),
-                # Column('old_case_no', css_class='form-group col-md-2 mb-0'),
+                Column('iso_pcp', css_class='form-group col-md-2 mb-0'),
+                Column('reqs_pcp', css_class='form-group col-md-2 mb-0'),
+                Column('rel_pcp', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
             Row(
-                Column('iso_pcp', css_class='form-group col-md-2 mb-0'),
-                Column('reqs_pcp', css_class='form-group col-md-4 mb-0'),
-                Column('rel_pcp', css_class='form-group col-md-2 mb-0'),
-                # Column('tent_release', css_class='form-group col-md-2 mb-0'),
+                Column('old_case_no', css_class='form-group col-md-4 mb-0'),
+                Column('confirmed', css_class='form-group col-md-2 mb-0'),
+                Column('probable', css_class='form-group col-md-2 mb-0'),
+                Column('active', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
-            )
+            ),
+            Row(
+                Column('tent_release', css_class='form-group col-md-4 mb-0'),
+                Column('status', css_class='form-group col-md-4 mb-0'),
+                Column('release_date', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
         )
 
     def clean_status(self):
@@ -428,8 +524,18 @@ class InvestigationCaseForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
         if cleaned_data.get('status') != Statuses.objects.get(status_id=7):
             cleaned_data['last_follow'] = datetime.date.today()
+        status = cleaned_data.get('status')
+        release_date = cleaned_data.get('release_date')
+
+        if release_date is None:
+            if status == Statuses.objects.get(status_id=11):
+                raise ValidationError(_('Release date cannot be empty if status is set to "Released".'))
+        elif release_date > datetime.date.today():
+            raise ValidationError(_('Release date cannot be a future date.'))
+
         return cleaned_data
 
 
@@ -437,19 +543,20 @@ class FollowUpCaseForm(forms.ModelForm):
     active = forms.BooleanField(widget=forms.HiddenInput(), required=False)
     confirmed = forms.BooleanField(required=False)
     # last_follow = forms.DateField(widget=DatePickerInput())
-    # release_date = forms.DateField(widget=DatePickerInput())
+    release_date = forms.DateField(widget=DatePickerInput(), required=False)
     rel_pcp = forms.BooleanField(required=False)
     iso_pcp = forms.BooleanField(required=False)
     tent_release = forms.DateField(widget=DatePickerInput())
     reqs_pcp = forms.CharField(required=False)
     probable = forms.BooleanField(required=False)
+    old_case_no = forms.CharField(max_length=15, required=False)
 
     class Meta:
         model = Cases
         exclude = ['test',
                    'person',
-                   'old_case_no',
-                   'release_date',
+                   # 'old_case_no',
+                   # 'release_date',
                    ]
 
     def __init__(self, *args, **kwargs):
@@ -459,37 +566,56 @@ class FollowUpCaseForm(forms.ModelForm):
         self.fields['iso_pcp'].label = 'Isolation Order by PCP'
         self.fields['reqs_pcp'].label = 'PCP requirements for release'
         self.fields['confirmed'].label = 'Positive Test Confirmation'
+        self.fields['old_case_no'].label = 'Old ID'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
             Row(
-                Column('iso_pcp', css_class='form-group col-md-4 mb-0'),
-                Column('reqs_pcp', css_class='form-group col-md-4 mb-0'),
+                Column('iso_pcp', css_class='form-group col-md-2 mb-0'),
+                Column('reqs_pcp', css_class='form-group col-md-2 mb-0'),
                 Column('rel_pcp', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
             Row(
+                Column('old_case_no', css_class='form-group col-md-4 mb-0'),
                 Column('confirmed', css_class='form-group col-md-2 mb-0'),
                 Column('probable', css_class='form-group col-md-2 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
                 Column('tent_release', css_class='form-group col-md-4 mb-0'),
                 Column('status', css_class='form-group col-md-4 mb-0'),
+                Column('release_date', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
             Column('active', css_class='form-group col-md-4 mb-0'),
         )
 
     def clean_status(self):
-        data = self.cleaned_data['status']
-        print(data)
-        print(Statuses.objects.get(status_id=1))
-        if data == Statuses.objects.get(status_id=1):
+        cleaned_data = self.cleaned_data['status']
+        # print(cleaned_data)
+        # print(Statuses.objects.get(status_id=1))
+        if cleaned_data == Statuses.objects.get(status_id=1):
             raise ValidationError(_('Invalid case status - Case should not still need investigation'))
-        return data
+
+        return cleaned_data
+
     #
     # def clean_last_follow(self):
     #     data = datetime.date.today()
     #     return data;
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        release_date = cleaned_data.get('release_date')
+        if release_date is None:
+            if status == Statuses.objects.get(status_id=11):
+                raise ValidationError(_('Release date cannot be empty if status is set to "Released".'))
+        elif release_date > datetime.date.today():
+            raise ValidationError(_('Release date cannot be a future date.'))
+        return cleaned_data
 
 
 class CaseForm(forms.ModelForm):
@@ -725,6 +851,7 @@ class ContactFormSetHelper(FormHelper):
         self.form_method = 'post'
         self.form_tag = False
         self.disable_csrf = True
+        self.fields['old_contact_no'].label = 'Old ID'
         self.layout = Layout(
             Row(
                 Column('init_exposure', css_class='form-group col-md-4 mb-0'),
@@ -733,6 +860,7 @@ class ContactFormSetHelper(FormHelper):
                 css_class='form-row'
             ),
             Row(
+                Column('old_contact_no', css_class='form-group col-md-4 mb-0'),
                 Column('can_quarantine', css_class='form-group col-md-4 mb-0'),
                 Column('status', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
@@ -952,6 +1080,12 @@ class NewAssignment(forms.ModelForm):
                   'assign_type',
                   ]
 
+    def clean_user(self):
+        data = self.cleaned_data['user']
+        if data == AuthUser.objects.get(id=1):
+            raise ValidationError(_('Admin may not be selected to for assignments.'))
+        return data
+
 
 class AddContactAddress(forms.ModelForm):
 
@@ -1148,6 +1282,7 @@ class AddContactForm(forms.ModelForm):
 
     mark_as_contacted = forms.BooleanField(required=False)
     copy_case_notes = forms.BooleanField(required=False)
+    old_contact_no = forms.CharField(max_length=15, required=False)
 
     class Meta:
         model = Contacts
@@ -1157,6 +1292,7 @@ class AddContactForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.fields['old_contact_no'].label = 'Old ID'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
@@ -1168,6 +1304,7 @@ class AddContactForm(forms.ModelForm):
                 css_class='form-row'
             ),
             Row(
+                Column('old_contact_no', css_class='form-group col-md-4 mb-0'),
                 Column('can_quarantine', css_class='form-group col-md-4 mb-0'),
                 Column('status', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
@@ -1211,6 +1348,7 @@ class FollowUpContactForm(forms.ModelForm):
                       ]
     can_quarantine = forms.TypedChoiceField(choices=can_qt_options, required=False, coerce=int)
     active = forms.BooleanField(widget=forms.HiddenInput(), required=False)
+    old_contact_no = forms.CharField(max_length=15, required=False)
 
     class Meta:
         model = Contacts
@@ -1220,6 +1358,7 @@ class FollowUpContactForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.fields['old_contact_no'].label = 'Old ID'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
@@ -1231,9 +1370,10 @@ class FollowUpContactForm(forms.ModelForm):
                 css_class='form-row'
             ),
             Row(
-                Column('can_quarantine', css_class='form-group col-md-4 mb-0'),
-                Column('status', css_class='form-group col-md-4 mb-0'),
-                Column('active', css_class='form-group col-md-4 mb-0'),
+                Column('old_contact_no', css_class='form-group col-md-3 mb-0'),
+                Column('can_quarantine', css_class='form-group col-md-3 mb-0'),
+                Column('status', css_class='form-group col-md-3 mb-0'),
+                Column('active', css_class='form-group col-md-3 mb-0'),
                 css_class='form-row'
             ),
         )

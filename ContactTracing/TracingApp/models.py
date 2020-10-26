@@ -462,7 +462,7 @@ class Persons(models.Model):
         data = {'first': self.first,
                 'mi': '' if self.mi is None else self.mi + ' ',
                 'last': self.last,
-                'suffix': '' if self.suffix is None else ' ' + self.suffix + ' ',
+                'suffix': '' if self.suffix is None else ' ' + self.suffix,
                 'dob': self.dob,
                 'age': self.age,
                 'sex': sex}
@@ -604,7 +604,7 @@ class Tests(models.Model):
     test_type = models.ForeignKey(TestTypes, models.DO_NOTHING, blank=True, null=True)
     logged_date = models.DateField(blank=True, null=True)
     user = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
-    source = models.ForeignKey('TestSources', models.DO_NOTHING)
+    source = models.ForeignKey('TestSources', models.DO_NOTHING, null=True, blank=True)
 
     class Meta:
         managed = True
@@ -652,10 +652,33 @@ class Users(models.Model):
         db_table = 'users'
 
 
+class Clusters(models.Model):
+    cluster_id = models.AutoField(primary_key=True)
+    # details = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'clusters'
+
+
+class ClusterCaseJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    cluster = models.ForeignKey(Clusters, models.DO_NOTHING)
+    case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='developed')
+    index_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True, related_name='exposing')
+    associated_contact = models.ForeignKey(Contacts, models.DO_NOTHING, null=True, related_name='associated_contact')
+    last_exposed = models.DateField(null=True, blank=True)
+    details = models.CharField(max_length=256, null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = 'cluster_case_join'
+
+
 class CaseLinks(models.Model):
     link_id = models.AutoField(primary_key=True)
-    exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='exposing')
-    developed_case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='developed')
+    exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='exposing_old')
+    developed_case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='developed_old')
     developed_contact = models.ForeignKey(Contacts, models.DO_NOTHING)
 
     class Meta:

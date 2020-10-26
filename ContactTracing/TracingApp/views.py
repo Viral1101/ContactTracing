@@ -96,9 +96,10 @@ def info(request, cttype, pid):
         ct_symptoms = ContactSxJoin.objects.filter(case_id__in=in_contacts.values('contact_id'))
         ct_logs = ContactLogJoin.objects.filter(contact_id__in=in_contacts.values('contact_id'))
         testquery = CaseTestJoin.objects.filter(case_id=data)
-        upstream_cases = CaseLinks.objects.filter(developed_case=data)
-        downstream_cases = CaseLinks.objects.filter(exposing_case=data)
+        upstream_cases = ClusterCaseJoin.objects.filter(case=data).exclude(index_case=data)
+        downstream_cases = ClusterCaseJoin.objects.filter(index_case=data).exclude(case=data)
         assigned = Assignments.objects.filter(case_id=pid, status=pending).first()
+        # clusters = ClusterCaseJoin.objects.filter(case_id=pid)
     elif cttype == "CT":
         data = Contacts.objects.filter(contact_id=pid).first()
         in_contacts = CaseContactJoin.objects.filter(contact=data)
@@ -115,6 +116,7 @@ def info(request, cttype, pid):
         upstream_cases = None
         downstream_cases = None
         assigned = Assignments.objects.filter(contact_id=pid, status=pending).first()
+        # clusters = None
     else:
         raise Http404("Invalid case type")
 
@@ -369,17 +371,20 @@ def new_case(request):
             newcase = Cases(person=new_person, active=True, status=needs_invest_status)
             # print("made newcase")
 
-            newassign = Assignments(case=newcase,
-                                    assign_type=assignform.cleaned_data['assign_type'],
-                                    status=pending_status,
-                                    user=assignform.cleaned_data['user'])
-            # print("made newassign")
+            assigned_user = assignform.cleaned_data['user']
+            if assigned_user is not None and assigned_user != AuthUser.objects.get(id=1):
 
-            # new_person.save()
-            # new_test.save()
-            newcase.save()
-            newassign.save()
+                newassign = Assignments(case=newcase,
+                                        assign_type=assignform.cleaned_data['assign_type'],
+                                        status=pending_status,
+                                        user=assignform.cleaned_data['user'])
+                # print("made newassign")
+
+                # new_person.save()
+                # new_test.save()
+                newassign.save()
             # assignform.save()
+            newcase.save()
 
             case_test = CaseTestJoin(case=newcase, test=test)
             case_test.save()
@@ -583,6 +588,8 @@ def case_investigation(request, cttype, pid):
             elif 'save_and_add_contacts' in request.POST:
                 # print('save_contacts')
                 return redirect('/TracingApp/add-contact/%s/%s' % (cttype, pid))
+            elif 'save_and_link_cases' in request.POST:
+                return redirect('/TracingApp/link-cases/%s/%s' % (cttype, pid))
             else:
                 return redirect('assignments')
 
@@ -944,15 +951,15 @@ def followup(request, cttype, pid):
         else:
             testforms = None
 
-        print("Case: %s" % caseform.is_valid())
-        print("Person: %s" % personform.is_valid())
-        print("Email: %s" % emailforms.is_valid())
-        print("Address: %s" % addressforms.is_valid())
-        print("Phone: %s" % phoneforms.is_valid())
-        print("Log: %s" % new_tracelogform.is_valid())
-        print("Symptom: %s" % new_symptomforms.is_valid())
-
-        print(addressforms.errors)
+        # print("Case: %s" % caseform.is_valid())
+        # print("Person: %s" % personform.is_valid())
+        # print("Email: %s" % emailforms.is_valid())
+        # print("Address: %s" % addressforms.is_valid())
+        # print("Phone: %s" % phoneforms.is_valid())
+        # print("Log: %s" % new_tracelogform.is_valid())
+        # print("Symptom: %s" % new_symptomforms.is_valid())
+        #
+        # print(addressforms.errors)
 
         if caseform.is_valid() \
                 and personform.is_valid() \
@@ -1028,12 +1035,12 @@ def followup(request, cttype, pid):
                         #     No Symptoms to record
                         pass
 
-            print("Caseform chanaged?")
-            print(caseform.changed_data)
-
-            print("last_follow initial: %s | last_follow current: %s" % (caseform['last_follow'].initial, caseform.cleaned_data['last_follow']))
-            print("active initial: %s | active current: %s" % (
-            caseform['active'].initial, caseform.cleaned_data['active']))
+            # print("Caseform chanaged?")
+            # print(caseform.changed_data)
+            #
+            # print("last_follow initial: %s | last_follow current: %s" % (caseform['last_follow'].initial, caseform.cleaned_data['last_follow']))
+            # print("active initial: %s | active current: %s" % (
+            # caseform['active'].initial, caseform.cleaned_data['active']))
 
             this_caseform = caseform.save(commit=False)
 
@@ -1089,11 +1096,15 @@ def followup(request, cttype, pid):
                         linked_cases = CaseContactJoin.objects.filter(contact=case)
                         # print(linked_cases)
 
+                        new_cluster = Clusters()
+                        new_cluster.save()
+
                         for linked_case in linked_cases:
                             # print(linked_case.case)
-                            this_link = CaseLinks(exposing_case=linked_case.case,
-                                                  developed_case=upgraded_case,
-                                                  developed_contact=this_caseform)
+                            this_link = ClusterCaseJoin(cluster=new_cluster,
+                                                        index_case=linked_case.case,
+                                                        case=upgraded_case,
+                                                        associated_contact=this_caseform)
                             this_link.save()
 
                 if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
@@ -1102,17 +1113,19 @@ def followup(request, cttype, pid):
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14):
 
-                    print("Secondary, by status:")
-                    print(caseform.cleaned_data['status'])
+                    # print("Secondary, by status:")
+                    # print(caseform.cleaned_data['status'])
                     this_caseform.active = False
+                else:
+                    this_caseform.active = True
 
                         # print("Case upgraded")
 
-            print('Active: %s' % caseform.cleaned_data['active'])
+            # print('Active: %s' % caseform.cleaned_data['active'])
             this_caseform.last_follow = datetime.date.today()
             # caseform.cleaned_data['last_follow'] = datetime.date.today()
-            print("Before caseform is saved, inactive?")
-            print(this_caseform.active)
+            # print("Before caseform is saved, inactive?")
+            # print(this_caseform.active)
             this_caseform.save()
 
             done_status = AssignmentStatus.objects.get(status_id=2)
@@ -1132,8 +1145,6 @@ def followup(request, cttype, pid):
             else:
                 return redirect('assignments')
 
-
-
     else:
         if cttype == 'C':
             caseform = FollowUpCaseForm(instance=case)
@@ -1147,16 +1158,16 @@ def followup(request, cttype, pid):
         phoneforms = PhoneFormSet(queryset=Phones.objects.filter(phone_id__in=phone_query), prefix='phone')
         emailforms = EmailFormSet(queryset=Emails.objects.filter(email_id__in=email_query), prefix='email')
         symptomforms = SymptomFormSet(queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
-        print(symptom_query)
-        print("FORMS:")
-        print(symptomforms)
+        # print(symptom_query)
+        # print("FORMS:")
+        # print(symptomforms)
         tracelogforms = TraceLogFormSet(queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
         new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log)
         new_symptomforms = NewSymptomFormSet(prefix='sxlog',
                                              queryset=SxLog.objects.none())
         newtestforms = TestFormSet(prefix='new_test', queryset=test_query)
 
-        print(test_query)
+        # print(test_query)
         # A contact shouldn't have a test
         testforms = Tests.objects.none()
 
@@ -1223,11 +1234,13 @@ def assign_contacts_cases(request):
                     print(caseassign.cleaned_data)
                     if caseassign.cleaned_data['assign_box']:
                         # print('checked box')
-                        this_assign = Assignments(user=assignform.cleaned_data['user'],
-                                                  case=cases[i],
-                                                  status=pending_status,
-                                                  assign_type=assignform.cleaned_data['assign_type'])
-                        this_assign.save()
+                        user_assigned = assignform.cleaned_data['user']
+                        if user_assigned is not None and user_assigned != AuthUser.objects.get(id=1):
+                            this_assign = Assignments(user=user_assigned,
+                                                      case=cases[i],
+                                                      status=pending_status,
+                                                      assign_type=assignform.cleaned_data['assign_type'])
+                            this_assign.save()
                 i = i + 1
 
             for contactassign in contactassignments:
@@ -1302,6 +1315,208 @@ def create_household(request):
 
 
 @login_required(login_url='/accounts/login/')
+def create_cluster(request):
+
+    if request.method == 'POST':
+
+        caselinkform = CaseLinkForm(request.POST)
+        # caselinkform.fields['cases'].initial = Cases.objects.get(case_id=case_id)
+
+        # print("HH form valid?")
+        # print(householdform.is_valid())
+        if caselinkform.is_valid():
+            cases = caselinkform.cleaned_data['cases']
+
+            this_cluster = Clusters()
+            this_cluster.save()
+
+            for case in cases:
+                # print(person.person_id)
+                this_cluster_case = ClusterCaseJoin(cluster=this_cluster, case=case)
+                this_cluster_case.save()
+
+            if 'continue' in request.POST:
+                # print('save_exit')
+                return redirect('link-cases/cluster-index/%s' % (this_cluster.cluster_id))
+            else:
+                return redirect('assignments')
+
+    else:
+        caselinkform = CaseLinkForm()
+        # caselinkform.fields['cases'].initial = Cases.objects.get(case_id=case_id)
+
+    return render(request, 'link-cases/link-cases.html', {'caselinkform': caselinkform,
+                                                               })
+
+
+@login_required(login_url='/accounts/login/')
+def create_cluster_from(request, case_id):
+
+    if request.method == 'POST':
+
+        caselinkform = CaseLinkForm(request.POST)
+        caselinkform.fields['cases'].initial = Cases.objects.get(case_id=case_id)
+
+        # print("HH form valid?")
+        # print(householdform.is_valid())
+        if caselinkform.is_valid():
+            cases = caselinkform.cleaned_data['cases']
+
+            this_cluster = Clusters()
+            this_cluster.save()
+
+            for case in cases:
+                # print(person.person_id)
+                this_cluster_case = ClusterCaseJoin(cluster=this_cluster, case=case)
+                this_cluster_case.save()
+
+            if 'continue' in request.POST:
+                # print('save_exit')
+                return redirect('investigate/C/%s/cluster/%s' % (case_id, this_cluster.cluster_id))
+            else:
+                return redirect('investigate/C/%s' % case_id)
+
+    else:
+        caselinkform = CaseLinkForm()
+        caselinkform.fields['cases'].initial = Cases.objects.get(case_id=case_id)
+
+    return render(request, 'link-cases/link-cases.html', {'caselinkform': caselinkform,
+                                                               })
+
+
+@login_required(login_url='/accounts/login/')
+def edit_cluster(request, cluster_id):
+    # Get the cluster object or throw a 404 if it doesn't exist
+    cluster = get_object_or_404(Clusters, cluster_id=cluster_id)
+
+    # Get the index case to use to have a radio button pre-selected
+    try:
+        selected = ClusterCaseJoin.objects.filter(cluster=cluster).first().index_case
+    except ClusterCaseJoin.DoesNotExist:
+        selected = None
+
+    ClusterFormset =  modelformset_factory(ClusterCaseJoin, form=ClusterEditForm, extra=0)
+    ClusterCaseQS = ClusterCaseJoin.objects.filter(cluster=cluster)
+
+    # print(cluster.cluster_id)
+    # print(selected)
+
+    # Enter the section governed by a POST request
+    if request.method == 'POST':
+        # If there is an index case in the cluster, preselect the radiobutton
+        if selected:
+            editclusterforms = ClusterFormset(request.POST, queryset=ClusterCaseQS, initial={'case': selected.case_id})
+            # editclusterform = ClusterEditForm(request.POST, cluster=cluster, initial={'case': selected.case_id})
+        # Otherwise don't select any radio buttons
+        else:
+            editclusterforms = ClusterFormset(request.POST, queryset=ClusterCaseQS)
+            # editclusterform = ClusterEditForm(request.POST, cluster=cluster)
+        # print(editclusterform.is_valid())
+
+        # Check the validity of the form
+        if editclusterforms.is_valid():
+            # Get the index case from the selected radio button
+            # index_case_id = editclusterforms.cleaned_data['case']
+
+            # If the previous index is different from the new set index, save the new index case
+            if editclusterforms.has_changed():
+                cluster_index = Cases.objects.get(case_id=index_case_id)
+                cluster_cases = ClusterCaseJoin.objects.filter(cluster=cluster)
+                for case in cluster_cases:
+                    case.index_case = cluster_index
+                    case.save()
+
+                # If details have been entered, save it to the cluster object
+                if editclusterforms.cleaned_data['details']:
+                    cluster.details = editclusterforms.cleaned_data['details']
+                    cluster.save()
+
+            if 'save_and_exit' in request.POST:
+                # print('save_exit')
+                messages.success(request, "Case %s set as the index for cluster %s." % (index_case_id, cluster_id))
+                return redirect('info', cttype='C', pid=index_case_id)
+            else:
+                ClusterCaseJoin.objects.filter(cluster=cluster).delete()
+                cluster.delete()
+                return redirect('assignments')
+
+        else:
+            messages.error(request, "You must select an index case for this cluster.")
+    else:
+        if selected:
+            editclusterforms = ClusterFormset(queryset=ClusterCaseQS, initial={'case': selected.case_id})
+            # editclusterform = ClusterEditForm(instance=cluster, initial={'case': selected.case_id})
+        else:
+            editclusterforms = ClusterFormset(queryset=ClusterCaseQS, prefix='cluster')
+            # editclusterform = ClusterEditForm(instance=cluster)
+        # print(editclusterform)
+        return render(request, 'link-cases/edit-cluster.html', {'editclusterforms': editclusterforms,
+                                                          })
+
+
+@login_required(login_url='/accounts/login/')
+def edit_case_cluster(request, this_case_id, cluster_id):
+    cluster = get_object_or_404(Clusters, cluster_id=cluster_id)
+    # print(cluster_id)
+    # print(cluster)
+    instance = ClusterCaseJoin.objects.filter(cluster=cluster).first()
+
+    try:
+        selected = ClusterCaseJoin.objects.get(cluster=cluster, index_case=1)
+    except ClusterCaseJoin.DoesNotExist:
+        selected = None
+
+    # print(cluster.cluster_id)
+    # print(selected)
+
+    if request.method == 'POST':
+        if selected:
+            editclusterform = ClusterEditForm(request.POST, cluster=cluster, initial={'case': selected.case_id})
+        else:
+            editclusterform = ClusterEditForm(request.POST, cluster=cluster)
+        # print(editclusterform.is_valid())
+
+        # Check the validity of the form
+        if editclusterform.is_valid():
+            # Ger the index case from the selected radio button
+            index_case_id = editclusterform.cleaned_data['case']
+
+            # If the previous index is different from the new set index, save the new index case
+            if index_case_id != selected.case_id:
+                # print("Selected not None")
+                cluster_index = Cases.objects.get(case_id=index_case_id)
+                cluster_cases = ClusterCaseJoin.objects.filter(cluster=cluster)
+                for case in cluster_cases:
+                    case.index_case = cluster_index
+                    case.save()
+
+            # If details have been entered, save it to the cluster object
+            if editclusterform.cleaned_data['details']:
+                cluster.details = editclusterform.cleaned_data['details']
+                cluster.save()
+
+            if 'save_and_exit' in request.POST:
+                # print('save_exit')
+                messages.success(request, "Case %s set as the index for cluster %s." % (index_case_id, cluster_id))
+                return redirect('info', cttype='C', pid=this_case_id)
+            else:
+                ClusterCaseJoin.objects.filter(cluster=cluster).delete()
+                cluster.delete()
+                return redirect('assignments')
+
+        else:
+            messages.error(request, "You must select an index case for this cluster.")
+    else:
+        if selected:
+            editclusterform = ClusterEditForm(cluster=cluster, initial={'case': selected.case_id})
+        else:
+            editclusterform = ClusterEditForm(cluster=cluster)
+        # print(editclusterform)
+        return render(request, 'link-cases/edit-cluster.html', {'editclusterform': editclusterform,
+                                                          })
+
+
+@login_required(login_url='/accounts/login/')
 def change_password(request):
     if request.method == 'POST':
         form = PasswordChangeForm(request.user, request.POST)
@@ -1340,17 +1555,21 @@ def search_results(request):
 
     is_case = re.search('C\d+', query)
     is_contact = re.search('CT\d+', query)
+    is_probable = re.search('P\d+', query)
 
     print(is_case)
 
-    if is_case is not None:
+    if is_case is not None or is_probable is not None:
         case_query = re.findall('\d+', query)
-        cases = Cases.objects.filter(Q(case_id=case_query[0]) | Q(old_case_no="C%s" % case_query[0]))
+        cases = Cases.objects.filter(Q(case_id=case_query[0]) | Q(old_case_no="C%s" % case_query[0]) | Q(old_case_no="P%s" % case_query[0]))
     elif is_contact is not None:
         contact_query = re.findall('\d+', query)
         # print(contact_query)
         contacts = Contacts.objects.filter(
             Q(contact_id=contact_query[0]) | Q(old_contact_no="CT%s" % contact_query[0]))
+    elif is_probable is not None:
+        case_query = re.findall('\d+', query)
+        cases = Cases.objects.filter(Q(old_case_no="P%s" % case_query[0]))
     elif len(persons) == 0:
         print("should be the case")
         case_query = re.findall('\d+', query)
