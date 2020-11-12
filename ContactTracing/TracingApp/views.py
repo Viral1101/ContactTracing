@@ -31,7 +31,7 @@ def assigns(request):
     as_contacts = assignments.filter(contact__contact_id__gte=0)
     outbreaks = assignments.filter(outbreak__outbreak_id__gte=0)
 
-    print(assignments)
+    # print(assignments)
 
     return render(request, 'home.html', {'types': types,
                                          'cases': as_cases,
@@ -52,7 +52,7 @@ def cases(request):
     cs_name = 'Cases'
     cs_assigns = Assignments.objects.filter(case__in=cs_cases, status=1)
 
-    print(len(cs_assigns))
+    # print(len(cs_assigns))
 
     return render(request, 'case-list.html', {'today': today,
                                               # 'phones': phones,
@@ -86,7 +86,9 @@ def info(request, cttype, pid):
 
     if cttype == "C":
         data = Cases.objects.get(case_id=pid)
-        in_contacts = CaseContactJoin.objects.filter(case=data)
+        exposed = Exposures.objects.filter(exposing_case=data)
+        in_contacts = ContactExposureJoin.objects.filter(exposure__in=exposed)
+        print(in_contacts)
         sxs = CaseSxJoin.objects.filter(case=data)
         logs = CaseLogJoin.objects.filter(case=data)
         in_name = 'Case'
@@ -99,18 +101,33 @@ def info(request, cttype, pid):
         upstream_cases = ClusterCaseJoin.objects.filter(case=data).exclude(index_case=data)
         downstream_cases = ClusterCaseJoin.objects.filter(index_case=data).exclude(case=data)
         assigned = Assignments.objects.filter(case_id=pid, status=pending).first()
+        exposures = None
         # clusters = ClusterCaseJoin.objects.filter(case_id=pid)
     elif cttype == "CT":
         data = Contacts.objects.filter(contact_id=pid).first()
-        in_contacts = CaseContactJoin.objects.filter(contact=data)
+        # in_contacts = CaseContactJoin.objects.filter(contact=data)
         sxs = ContactSxJoin.objects.filter(case=data)
         logs = ContactLogJoin.objects.filter(contact=data)
         in_name = 'Contact'
-        last_exposure = data.last_exposure
+        exposures = ContactExposureJoin.objects.filter(contact=data)
+        in_contacts = Exposures.objects.filter(exposure_id__in=exposures.values('exposure_id'))
+        print(exposures)
+        if len(exposures) > 0:
+            last_exposure = exposures.first().contact.last_exposure
+        else:
+            last_exposure = None
+        for exposure in exposures:
+            if last_exposure is not None and exposure.exposure.last_exposure is not None:
+                last_exposure = max(last_exposure, exposure.exposure.last_exposure)
+            else:
+                last_exposure = exposure.exposure.last_exposure
+        # last_exposure = data.last_exposure
+        exposed = Exposures.objects.filter(exposure_id__in=exposures.values("exposure_id"))
         contacts_logs = CaseLogJoin.objects.\
-            filter(case_id__in=in_contacts.values('case_id'))
-        ct_symptoms = CaseSxJoin.objects.filter(case_id__in=in_contacts.values('case_id'))
-        ct_logs = CaseLogJoin.objects.filter(case_id__in=in_contacts.values('case_id'))
+            filter(case_id__in=exposed.values('exposing_case_id'))
+        print(exposed)
+        ct_symptoms = CaseSxJoin.objects.filter(case_id__in=exposed.values('exposing_case_id'))
+        ct_logs = CaseLogJoin.objects.filter(case_id__in=exposed.values('exposing_case_id'))
         # print(ct_logs.values('case_id'))
         testquery = ContactTestJoin.objects.filter(contact_id=data)
         upstream_cases = None
@@ -193,7 +210,7 @@ def info(request, cttype, pid):
         else:
             return redirect('assignments')
 
-    print(assigned)
+    # print(assigned)
 
     if assigned is not None:
         if assigned.user is not None:
@@ -227,6 +244,7 @@ def info(request, cttype, pid):
                                                       'downstream_cases': downstream_cases,
                                                       'assigned': assigned,
                                                       'assigned_to_this_user': assigned_to_this_user,
+                                                      'exposures': exposures,
                                                       })
 
 
@@ -328,11 +346,11 @@ def new_case(request):
         addressform_valid = addressform.is_valid()
         phoneform_valid = phoneform.is_valid()
 
-        print('Assign: %s || Test: %s || Person: %s || Address: %s || Phone: %s' %
-              (assignform_valid, testform_valid, personform_valid, addressform_valid, phoneform_valid))
-        print(testform.cleaned_data['logged_date'])
-
-        print(assignform.errors)
+        # print('Assign: %s || Test: %s || Person: %s || Address: %s || Phone: %s' %
+        #       (assignform_valid, testform_valid, personform_valid, addressform_valid, phoneform_valid))
+        # print(testform.cleaned_data['logged_date'])
+        #
+        # print(assignform.errors)
 
         if personform.is_valid()\
                 and addressform.is_valid()\
@@ -369,6 +387,7 @@ def new_case(request):
 
             needs_invest_status = Statuses.objects.get(status_id=1)
             newcase = Cases(person=new_person, active=True, status=needs_invest_status)
+            newcase.save()
             # print("made newcase")
 
             assigned_user = assignform.cleaned_data['user']
@@ -384,7 +403,6 @@ def new_case(request):
                 # new_test.save()
                 newassign.save()
             # assignform.save()
-            newcase.save()
 
             case_test = CaseTestJoin(case=newcase, test=test)
             case_test.save()
@@ -394,7 +412,7 @@ def new_case(request):
 
     else:
         personform = NewPersonForm(instance=person)
-        addressform = NewAddressForm(instance=address, initial={'state':'MO'})
+        addressform = NewAddressForm(instance=address, initial={'state': 'MO'})
         phoneform = NewPhoneNumberForm(instance=phone)
         assignform = NewAssignment(instance=assignment, initial={'status': pending_status, 'assign_type': 1})
         testform = NewTest(instance=test)
@@ -420,6 +438,11 @@ def case_investigation(request, cttype, pid):
         test_extra = 0
     else:
         test_extra = 1
+    email = PersonEmailJoin.objects(person=case.person)
+    if len(email) > 0:
+        email_extra = 0
+    else:
+        email_extra = 1
     user = AuthUser.objects.get(id=request.user.id)
     log = TraceLogs()
     # addressesJoins = PersonAddressJoin.objects.filter(person=person)
@@ -432,7 +455,7 @@ def case_investigation(request, cttype, pid):
     PhoneFormSet = modelformset_factory(Phones, form=PhoneForm, extra=0)
 
     NewTestFormSet = modelformset_factory(Tests, form=NewTest, extra=test_extra) #for adding new tests if needed
-    EmailFormSet = modelformset_factory(Emails, form=EmailForm, extra=1)
+    EmailFormSet = modelformset_factory(Emails, form=EmailForm, extra=email_extra)
 
     SymptomFormSet = modelformset_factory(Symptoms, form=SymptomForm, extra=1)
     SymptomLogFormSet = modelformset_factory(SxLog, form=NewSymptomLogForm, extra=1)
@@ -478,15 +501,15 @@ def case_investigation(request, cttype, pid):
         # logform.user = user
             # symptomlogform.rec_date = datetime.date.today()
 
-        print("Case: %s | Person: %s | Address: %s | Phone: %s | Email: %s | Test: %s | Log: %s | Sx: %s" %
-              (caseform.is_valid(),
-               personform.is_valid(),
-               addressforms.is_valid(),
-               emailforms.is_valid(),
-               phoneforms.is_valid(),
-               testforms.is_valid(),
-               logform.is_valid(),
-               symptomlogforms.is_valid()))
+        # print("Case: %s | Person: %s | Address: %s | Phone: %s | Email: %s | Test: %s | Log: %s | Sx: %s" %
+        #       (caseform.is_valid(),
+        #        personform.is_valid(),
+        #        addressforms.is_valid(),
+        #        emailforms.is_valid(),
+        #        phoneforms.is_valid(),
+        #        testforms.is_valid(),
+        #        logform.is_valid(),
+        #        symptomlogforms.is_valid()))
 
         if caseform.is_valid() \
                 and personform.is_valid()\
@@ -556,14 +579,14 @@ def case_investigation(request, cttype, pid):
             this_person.save()
             this_case.save()
 
-            print("up to the test section")
+            # print("up to the test section")
             if testforms.has_changed():
-                print("formset has changed")
+                # print("formset has changed")
                 for testform in testforms:
                     if testform.has_changed():
-                        print("form has changed")
+                        # print("form has changed")
                         if testform.is_valid():
-                            print("form is valid")
+                            # print("form is valid")
                             this_test = testform.save(commit=False)
                             this_test.user = user
                             this_test.logged_date = datetime.date.today()
@@ -585,11 +608,13 @@ def case_investigation(request, cttype, pid):
             if 'save_and_exit' in request.POST:
                 # print('save_exit')
                 return redirect('info', cttype=cttype, pid=pid)
+            elif 'save_and_add_existing_contacts' in request.POST:
+                return redirect('/TracingApp/add-contact-existing/%s/%s' % (cttype, pid))
             elif 'save_and_add_contacts' in request.POST:
                 # print('save_contacts')
                 return redirect('/TracingApp/add-contact/%s/%s' % (cttype, pid))
             elif 'save_and_link_cases' in request.POST:
-                return redirect('/TracingApp/link-cases/%s/%s' % (cttype, pid))
+                return redirect('new-cluster-from', page='case-investigation', case_id=pid)
             else:
                 return redirect('assignments')
 
@@ -632,20 +657,26 @@ def add_contact(request, cttype, pid):
     if cttype != 'C':
         raise Http404("Invalid Case Type")
 
-    case = get_object_or_404(Cases, case_id=pid)
+    if pid == 0:
+        case = Cases()
+    else:
+        case = get_object_or_404(Cases, case_id=pid)
 
     contact = Contacts()
     person = Persons()
     log = TraceLogs()
+    exposure = Exposures(exposing_case=case)
     AddressFormSet = modelformset_factory(Addresses, form=AddContactAddress, extra=1)
     PhoneFormSet = modelformset_factory(Phones, form=AddContactPhone, extra=1)
     SymptomLogFormSet = modelformset_factory(SxLog, form=NewSymptomLogForm, extra=1)
     EmailFormSet = modelformset_factory(Emails, form=AddContactEmailForm, extra=1)
+    ExposureFormSet = modelformset_factory(Exposures, form=ContactExposureForm, extra=1, can_delete=True)
 
     addressformhelper = AddContactAddressHelper()
     phoneformhelper = AddContactPhoneHelper()
     emailformhelper = AddContactEmailFormHelper()
     symptomloghelper = SymptomLogSetHelper()
+    exposureformhelper = ContactExposureFormSetHelper()
 
     person_address_query = PersonAddressJoin.objects.none()
     addressquery = Addresses.objects.none()
@@ -657,6 +688,8 @@ def add_contact(request, cttype, pid):
     # case_sx_query = CaseSxJoin.objects.filter(case=case)
     symptom_query = SxLog.objects.none()
 
+    exposure_query = Exposures.objects.none()
+
     user = AuthUser.objects.get(id=request.user.id)
 
     if request.method == 'POST':
@@ -664,12 +697,21 @@ def add_contact(request, cttype, pid):
         contactform = AddContactForm(request.POST, instance=contact)
         personform = PersonForm(request.POST, instance=person)
         logform = ContactTraceLogForm(user, request.POST, instance=log)
-        relationform = AddCaseRelation(request.POST)
+        # relationform = AddCaseRelation(request.POST)
         usecasephoneform = AddCasePhoneForContact(request.POST)
+        usecaseemailform = AddCaseEmailForContact(request.POST)
+        usecaseaddressform = AddCaseAddressForContact(request.POST)
+
+        if pid == 0:
+            usecasephoneform.fields['use_case_phone'].disabled = True
+            usecaseemailform.fields['use_case_email'].disabled = True
+            usecaseaddressform.fields['use_case_address'].disabled = True
+            contactform.fields['copy_case_notes'].disabled = True
 
         addressforms = AddressFormSet(request.POST, prefix='address')
         phoneforms = PhoneFormSet(request.POST, prefix='phone')
         emailforms = EmailFormSet(request.POST, prefix='email')
+        exposureforms = ExposureFormSet(request.POST, initial=[{'exposing_case': case}], prefix='exposure')
 
         symptomlogforms = SymptomLogFormSet(request.POST, prefix='sxlog')
 
@@ -693,12 +735,14 @@ def add_contact(request, cttype, pid):
 
         if contactform.is_valid() \
                 and personform.is_valid() \
-                and relationform.is_valid() \
                 and usecasephoneform.is_valid() \
+                and usecaseemailform.is_valid() \
+                and usecaseaddressform.is_valid() \
                 and emailforms.is_valid() \
                 and addressforms.is_valid() \
                 and phoneforms.is_valid() \
-                and symptomlogforms.is_valid():
+                and symptomlogforms.is_valid() \
+                and exposureforms.is_valid():
 
             this_person = personform.save()
             # print(contactform.cleaned_data)
@@ -724,42 +768,35 @@ def add_contact(request, cttype, pid):
 
             contact_log.save()
 
-            relation = relationform.cleaned_data['relation_to_case']
-            case_contact, ctd = CaseContactJoin.objects.get_or_create(case=case,
-                                                                      contact=this_contact,
-                                                                      relation_to_case=relation)
-            case_contact.save()
+            # relation = relationform.cleaned_data['relation_to_case']
+            for exposureform in exposureforms:
+                if exposureform.is_valid():
+                    if not exposureform.cleaned_data['DELETE']:
+                        exposure = exposureform.save()
+                        contact_exposure = ContactExposureJoin(contact=this_contact, exposure=exposure)
+                        contact_exposure.save()
+
+            # case_contact, ctd = CaseContactJoin.objects.get_or_create(case=case,
+            #                                                           contact=this_contact,
+            #                                                           relation_to_case=relation)
+            # case_contact.save()
+
+            if usecaseaddressform.cleaned_data['use_case_address']:
+                case_address = PersonAddressJoin.objects.filter(person=case.person).first().address
+                person_address, created2 = PersonAddressJoin.objects.get_or_create(person=this_person, address=case_address)
+                person_address.save()
 
             for addressform in addressforms:
                 try:
-                    if addressform.cleaned_data['use_case_address']:
-                        case_address = PersonAddressJoin.objects.filter(person=case.person).first().address
+                    if addressform.cleaned_data['street']:
+                        this_address = addressform.save()
                         person_address, created = PersonAddressJoin.objects.get_or_create(person=this_person,
-                                                                                          address=case_address)
+                                                                                          address=this_address)
                         person_address.save()
-                    else:
-                        try:
-                            if addressform.cleaned_data['street']:
-                                this_address = addressform.save()
-                                person_address, created = PersonAddressJoin.objects.get_or_create(person=this_person,
-                                                                                                  address=this_address)
-                                person_address.save()
-                                # this_address.save()
-                        except KeyError:
-                            #     No address to record
-                            pass
+                        # this_address.save()
                 except KeyError:
-                    print("use_case_address threw KeyError")
-                    try:
-                        if addressform.cleaned_data['street']:
-                            this_address = addressform.save()
-                            person_address, created = PersonAddressJoin.objects.get_or_create(person=this_person,
-                                                                                              address=this_address)
-                            person_address.save()
-                            # this_address.save()
-                    except KeyError:
-                        #     No address to record
-                        pass
+                    #     No address to record
+                    pass
 
             if usecasephoneform.cleaned_data['use_case_phone']:
                 case_phone = PersonPhoneJoin.objects.filter(person=case.person).first().phone
@@ -777,19 +814,17 @@ def add_contact(request, cttype, pid):
                     person_phone.save()
                     # this_phone.save()
 
+            if usecaseemailform.cleaned_data['use_case_email']:
+                case_email = PersonEmailJoin.objects.filter(person=case.person).first().email
+                person_email, created2 = PersonEmailJoin.objects.get_or_create(person=this_person, phone=case_email)
+                person_email.save()
+
             for emailform in emailforms:
-                try:
-                    if emailform.cleaned_data['use_case_email']:
-                        case_email = PersonEmailJoin.objects.filter(person=case.person).first().email
-                        person_email, created3 = PersonEmailJoin.objects.get_or_create(person=this_person, email=case_email)
-                        person_email.save()
-                    elif emailform.is_valid():
-                        this_email = emailform.save()
-                        person_email, created3 = PersonEmailJoin.objects.get_or_create(person=this_person, email=this_email)
-                        person_email.save()
-                        # this_phone.save()
-                except KeyError:
-                    pass
+                if emailform.is_valid():
+                    this_email = emailform.save()
+                    person_email, created3 = PersonEmailJoin.objects.get_or_create(person=this_person, email=this_email)
+                    person_email.save()
+                    # this_phone.save()
 
             for symptomlogform in symptomlogforms:
                 if symptomlogform.is_valid():
@@ -804,13 +839,21 @@ def add_contact(request, cttype, pid):
                         #     No Symptoms to record
                         pass
 
-            messages.success(request, "Contact CT%s:%s %s added to Case C%s." % (this_contact.contact_id,
-                                                                                 this_person.first,
-                                                                                 this_person.last,
-                                                                                 case.case_id))
+            if pid != 0:
+                messages.success(request, "Contact CT%s:%s %s added to Case C%s." % (this_contact.contact_id,
+                                                                                     this_person.first,
+                                                                                     this_person.last,
+                                                                                     case.case_id))
+            else:
+                messages.success(request, "Contact CT%s:%s %s added to database." % (this_contact.contact_id,
+                                                                                     this_person.first,
+                                                                                     this_person.last))
 
             if 'save_and_exit' in request.POST:
-                return redirect('info', cttype=cttype, pid=pid)
+                if pid != 0:
+                    return redirect('info', cttype=cttype, pid=pid)
+                else:
+                    return redirect('info', cttype='CT', pid=this_contact.contact_id)
             elif 'save_and_add_another' in request.POST:
                 return redirect('/TracingApp/add-contact/%s/%s' % (cttype, pid))
             else:
@@ -818,24 +861,37 @@ def add_contact(request, cttype, pid):
 
     else:
         personform = PersonForm(instance=person)
-        relationform = AddCaseRelation()
+        # relationform = AddCaseRelation()
         usecasephoneform = AddCasePhoneForContact()
+        usecaseemailform = AddCaseEmailForContact()
+        usecaseaddressform = AddCaseAddressForContact()
 
         addressforms = AddressFormSet(queryset=addressquery, prefix='address')
         # phonequery = PersonPhoneJoin.objects.filter(person_id=case.person_id)
         phoneforms = PhoneFormSet(queryset=phone_query, prefix='phone')
         emailforms = EmailFormSet(queryset=email_query, prefix='email')
+        # print(case)
+        exposureforms = ExposureFormSet(queryset=exposure_query, initial=[{'exposing_case': case}], prefix='exposure')
+        # print(exposureforms)
         contactform = AddContactForm(instance=contact)
         logform = ContactTraceLogForm(user, instance=log)
 
         symptomlogforms = SymptomLogFormSet(queryset=symptom_query, prefix='sxlog')
 
+        if pid == 0:
+            usecasephoneform.fields['use_case_phone'].disabled = True
+            usecaseemailform.fields['use_case_email'].disabled = True
+            usecaseaddressform.fields['use_case_address'].disabled = True
+            contactform.fields['copy_case_notes'].disabled = True
+
     return render(request, 'contacts/add-contact.html', {'contactform': contactform,
                                                          'personform': personform,
-                                                         'relationform': relationform,
+                                                         # 'relationform': relationform,
                                                          'addressforms': addressforms,
                                                          'addressformhelper': addressformhelper,
                                                          'usecasephoneform': usecasephoneform,
+                                                         'usecaseemailform': usecaseemailform,
+                                                         'usecaseaddressform': usecaseaddressform,
                                                          'phoneforms': phoneforms,
                                                          'phoneformhelper': phoneformhelper,
                                                          'emailforms': emailforms,
@@ -843,6 +899,8 @@ def add_contact(request, cttype, pid):
                                                          'symptomlogforms': symptomlogforms,
                                                          'symptomloghelper': symptomloghelper,
                                                          'logform': logform,
+                                                         'exposureforms': exposureforms,
+                                                         'exposureformhelper': exposureformhelper,
                                                          })
 
 
@@ -859,6 +917,7 @@ def followup(request, cttype, pid):
         test_query = CaseTestJoin.objects.filter(case_id=case)
         user = AuthUser.objects.get(id=request.user.id)
         this_assignment, a_created = Assignments.objects.get_or_create(case=case, user=user, status=pending)
+        exposures = None
     elif cttype == 'CT':
         case = get_object_or_404(Contacts, contact_id=pid)
         symptom_query = ContactSxJoin.objects.filter(case_id=case)
@@ -867,6 +926,7 @@ def followup(request, cttype, pid):
         test_query = ContactTestJoin.objects.filter(contact_id=case)
         user = AuthUser.objects.get(id=request.user.id)
         this_assignment, a_created = Assignments.objects.get_or_create(contact=case, user=user, status=pending)
+        exposures = ContactExposureJoin.objects.filter(contact=case).values('exposure')
     else:
         return Http404("Invalid type.")
 
@@ -905,6 +965,7 @@ def followup(request, cttype, pid):
     SymptomFormSet = modelformset_factory(SxLog, form=OldSymptomLogForm, extra=0)
     TraceLogFormSet = modelformset_factory(TraceLogs, form=TraceLogForm, extra=0)
     TestFormSet = modelformset_factory(Tests, form=NewTest, extra=test_extra)
+    ContactExposureFormSet = modelformset_factory(Exposures, form=ContactExposureForm, extra=0, can_delete=True)
 
     new_log = TraceLogs()
     NewSymptomFormSet = modelformset_factory(SxLog, form=NewSymptomLogForm, extra=1)
@@ -916,6 +977,7 @@ def followup(request, cttype, pid):
     symptomloghelper = SymptomLogSetHelper()
     traceloghelper = OldTraceLogFormHelper()
     testformhelper = NewTestFormHelper()
+    contactexposureformhelper = ContactExposureFormSetHelper()
 
     if request.method == 'POST':
         if cttype == 'C':
@@ -936,6 +998,10 @@ def followup(request, cttype, pid):
         new_symptomforms = NewSymptomFormSet(request.POST, prefix='sxlog',
                                              queryset=SxLog.objects.none())
         newtestforms = TestFormSet(request.POST, queryset=test_query, prefix='new_test')
+        if cttype == 'CT':
+            contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.filter(exposure_id__in=exposures), prefix='exposure')
+        else:
+            contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.none() , prefix='exposure')
 
         # print(test)
         # print(len(test))
@@ -1053,8 +1119,8 @@ def followup(request, cttype, pid):
                             caseform.cleaned_data['status'] == Statuses.objects.get(status_id=10):
                         # print("Caseform changed and marked as case")
                         this_caseform.active = False
-                        print("Just set to inactive, is it?")
-                        print(this_caseform.active)
+                        # print("Just set to inactive, is it?")
+                        # print(this_caseform.active)
 
                         # print(caseform.cleaned_data['active'])
                         this_status = caseform.cleaned_data['status']
@@ -1139,9 +1205,13 @@ def followup(request, cttype, pid):
             if 'save_and_exit' in request.POST:
                 # print('save_exit')
                 return redirect('info', cttype=cttype, pid=pid)
+            elif 'save_and_add_existing_contacts' in request.POST:
+                return redirect('/TracingApp/add-contact-existing/%s/%s' % (cttype, pid))
             elif 'save_and_add_contacts' in request.POST:
                 # print('save_contacts')
                 return redirect('/TracingApp/add-contact/%s/%s' % (cttype, pid))
+            elif 'save_and_link_cases' in request.POST:
+                return redirect('new-cluster-from',  page='follow-up', case_id=pid)
             else:
                 return redirect('assignments')
 
@@ -1166,6 +1236,12 @@ def followup(request, cttype, pid):
         new_symptomforms = NewSymptomFormSet(prefix='sxlog',
                                              queryset=SxLog.objects.none())
         newtestforms = TestFormSet(prefix='new_test', queryset=test_query)
+        if exposures is not None:
+            contactexposureforms = ContactExposureFormSet(queryset=Exposures.objects.filter(exposure_id__in=exposures),
+                                                          prefix='exposure')
+        else:
+            contactexposureforms = ContactExposureFormSet(queryset=Exposures.objects.none(),
+                                                          prefix='exposure')
 
         # print(test_query)
         # A contact shouldn't have a test
@@ -1189,6 +1265,8 @@ def followup(request, cttype, pid):
                                               'type': cttype,
                                               'newtestforms': newtestforms,
                                               'testformhelper': testformhelper,
+                                              'exposureforms': contactexposureforms,
+                                              'exposureformhelper': contactexposureformhelper,
                                               })
 
 
@@ -1231,7 +1309,7 @@ def assign_contacts_cases(request):
                 # print('in for')
                 if caseassign.is_valid():
                     # print('valid form')
-                    print(caseassign.cleaned_data)
+                    # print(caseassign.cleaned_data)
                     if caseassign.cleaned_data['assign_box']:
                         # print('checked box')
                         user_assigned = assignform.cleaned_data['user']
@@ -1257,7 +1335,7 @@ def assign_contacts_cases(request):
                 j = j + 1
 
             return redirect('assignments')
-        print(caseassignments.errors)
+        # print(caseassignments.errors)
 
     else:
 
@@ -1337,7 +1415,7 @@ def create_cluster(request):
 
             if 'continue' in request.POST:
                 # print('save_exit')
-                return redirect('link-cases/cluster-index/%s' % (this_cluster.cluster_id))
+                return redirect('edit-cluster', cluster_id=this_cluster.cluster_id)
             else:
                 return redirect('assignments')
 
@@ -1350,7 +1428,7 @@ def create_cluster(request):
 
 
 @login_required(login_url='/accounts/login/')
-def create_cluster_from(request, case_id):
+def create_cluster_from(request, page, case_id):
 
     if request.method == 'POST':
 
@@ -1372,9 +1450,9 @@ def create_cluster_from(request, case_id):
 
             if 'continue' in request.POST:
                 # print('save_exit')
-                return redirect('investigate/C/%s/cluster/%s' % (case_id, this_cluster.cluster_id))
+                return redirect('edit-case-cluster', page=page, case_id=case_id, cluster_id=this_cluster.cluster_id)
             else:
-                return redirect('investigate/C/%s' % case_id)
+                return redirect(page, cttype='C', pid=case_id)
 
     else:
         caselinkform = CaseLinkForm()
@@ -1390,12 +1468,12 @@ def edit_cluster(request, cluster_id):
     cluster = get_object_or_404(Clusters, cluster_id=cluster_id)
 
     # Get the index case to use to have a radio button pre-selected
-    try:
-        selected = ClusterCaseJoin.objects.filter(cluster=cluster).first().index_case
-    except ClusterCaseJoin.DoesNotExist:
-        selected = None
+    # try:
+    #     selected = ClusterCaseJoin.objects.filter(cluster=cluster).first().index_case
+    # except ClusterCaseJoin.DoesNotExist:
+    #     selected = None
 
-    ClusterFormset =  modelformset_factory(ClusterCaseJoin, form=ClusterEditForm, extra=0)
+    ClusterFormset = modelformset_factory(ClusterCaseJoin, form=ClusterEditForm, extra=0, can_delete=True)
     ClusterCaseQS = ClusterCaseJoin.objects.filter(cluster=cluster)
 
     # print(cluster.cluster_id)
@@ -1403,38 +1481,47 @@ def edit_cluster(request, cluster_id):
 
     # Enter the section governed by a POST request
     if request.method == 'POST':
-        # If there is an index case in the cluster, preselect the radiobutton
-        if selected:
-            editclusterforms = ClusterFormset(request.POST, queryset=ClusterCaseQS, initial={'case': selected.case_id})
-            # editclusterform = ClusterEditForm(request.POST, cluster=cluster, initial={'case': selected.case_id})
-        # Otherwise don't select any radio buttons
-        else:
-            editclusterforms = ClusterFormset(request.POST, queryset=ClusterCaseQS)
-            # editclusterform = ClusterEditForm(request.POST, cluster=cluster)
-        # print(editclusterform.is_valid())
+        editclusterforms = ClusterFormset(request.POST, queryset=ClusterCaseQS, prefix='cluster')
+
+        # print(editclusterforms.is_valid())
+        # print(editclusterforms.errors)
 
         # Check the validity of the form
+        index_case_id = None
+
         if editclusterforms.is_valid():
-            # Get the index case from the selected radio button
-            # index_case_id = editclusterforms.cleaned_data['case']
 
-            # If the previous index is different from the new set index, save the new index case
-            if editclusterforms.has_changed():
-                cluster_index = Cases.objects.get(case_id=index_case_id)
-                cluster_cases = ClusterCaseJoin.objects.filter(cluster=cluster)
-                for case in cluster_cases:
-                    case.index_case = cluster_index
-                    case.save()
+            for x in editclusterforms:
+                if x.is_valid():
+                    if x.cleaned_data['is_index'] and index_case_id is None:
+                        index_case_id = x.cleaned_data['case']
+                        # print("Index: %s" % index_case_id)
 
-                # If details have been entered, save it to the cluster object
-                if editclusterforms.cleaned_data['details']:
-                    cluster.details = editclusterforms.cleaned_data['details']
-                    cluster.save()
+            for clusterform in editclusterforms:
+                # if clusterform.is_valid():
+                clusterform.instance.index_case = index_case_id
+                # clusterform.cleaned_data['details'] = "TESTING"
+                # print("Index case set to: %s" % clusterform.cleaned_data['index_case'])
+                clusterform.save()
+                # print("Cleaned data: %s" % clusterform.cleaned_data['index_case'])
+
+            for deleted in editclusterforms.deleted_forms:
+                # print(deleted)
+                case = deleted.instance.case
+                cluster = Clusters.objects.get(cluster_id=cluster_id)
+                ClusterCaseJoin.objects.get(case=case, cluster=cluster).delete()
+                messages.success(request, "Case %s removed from cluster %s." % (case.case_id, cluster_id))
+
+            remaining_cases = len(ClusterCaseJoin.objects.filter(cluster=cluster))
+            # print(remaining_cases)
+            if remaining_cases == 0:
+                cluster.delete()
+                messages.success(request, "Cluster %s is empty and has been deleted." % cluster_id)
 
             if 'save_and_exit' in request.POST:
                 # print('save_exit')
                 messages.success(request, "Case %s set as the index for cluster %s." % (index_case_id, cluster_id))
-                return redirect('info', cttype='C', pid=index_case_id)
+                return redirect('info', cttype='C', pid=index_case_id.case_id)
             else:
                 ClusterCaseJoin.objects.filter(cluster=cluster).delete()
                 cluster.delete()
@@ -1443,62 +1530,79 @@ def edit_cluster(request, cluster_id):
         else:
             messages.error(request, "You must select an index case for this cluster.")
     else:
-        if selected:
-            editclusterforms = ClusterFormset(queryset=ClusterCaseQS, initial={'case': selected.case_id})
-            # editclusterform = ClusterEditForm(instance=cluster, initial={'case': selected.case_id})
-        else:
-            editclusterforms = ClusterFormset(queryset=ClusterCaseQS, prefix='cluster')
-            # editclusterform = ClusterEditForm(instance=cluster)
-        # print(editclusterform)
+        editclusterforms = ClusterFormset(queryset=ClusterCaseQS, prefix='cluster')
+        # if selected:
+        #     editclusterforms = ClusterFormset(queryset=ClusterCaseQS, initial={'case': selected.case_id})
+        #     # editclusterform = ClusterEditForm(instance=cluster, initial={'case': selected.case_id})
+        # else:
+        #     editclusterforms = ClusterFormset(queryset=ClusterCaseQS, prefix='cluster')
+        #     # editclusterform = ClusterEditForm(instance=cluster)
+        # # print(editclusterform)
         return render(request, 'link-cases/edit-cluster.html', {'editclusterforms': editclusterforms,
                                                           })
 
 
 @login_required(login_url='/accounts/login/')
-def edit_case_cluster(request, this_case_id, cluster_id):
+def edit_case_cluster(request, page, case_id, cluster_id):
+    # Get the cluster object or throw a 404 if it doesn't exist
     cluster = get_object_or_404(Clusters, cluster_id=cluster_id)
-    # print(cluster_id)
-    # print(cluster)
-    instance = ClusterCaseJoin.objects.filter(cluster=cluster).first()
+    this_case_id = case_id
 
+    # Get the index case to use to have a radio button pre-selected
     try:
-        selected = ClusterCaseJoin.objects.get(cluster=cluster, index_case=1)
+        selected = ClusterCaseJoin.objects.filter(cluster=cluster).first().index_case
     except ClusterCaseJoin.DoesNotExist:
         selected = None
+
+    ClusterFormset = modelformset_factory(ClusterCaseJoin, form=ClusterEditForm, extra=0, can_delete=True)
+    ClusterCaseQS = ClusterCaseJoin.objects.filter(cluster=cluster)
 
     # print(cluster.cluster_id)
     # print(selected)
 
+    # Enter the section governed by a POST request
     if request.method == 'POST':
-        if selected:
-            editclusterform = ClusterEditForm(request.POST, cluster=cluster, initial={'case': selected.case_id})
-        else:
-            editclusterform = ClusterEditForm(request.POST, cluster=cluster)
-        # print(editclusterform.is_valid())
+        editclusterforms = ClusterFormset(request.POST, queryset=ClusterCaseQS, prefix='cluster')
+
+        # print(editclusterforms.is_valid())
+        # print(editclusterforms.errors)
 
         # Check the validity of the form
-        if editclusterform.is_valid():
-            # Ger the index case from the selected radio button
-            index_case_id = editclusterform.cleaned_data['case']
+        index_case_id = None
 
-            # If the previous index is different from the new set index, save the new index case
-            if index_case_id != selected.case_id:
-                # print("Selected not None")
-                cluster_index = Cases.objects.get(case_id=index_case_id)
-                cluster_cases = ClusterCaseJoin.objects.filter(cluster=cluster)
-                for case in cluster_cases:
-                    case.index_case = cluster_index
-                    case.save()
+        if editclusterforms.is_valid():
 
-            # If details have been entered, save it to the cluster object
-            if editclusterform.cleaned_data['details']:
-                cluster.details = editclusterform.cleaned_data['details']
-                cluster.save()
+            for x in editclusterforms:
+                if x.is_valid():
+                    if x.cleaned_data['is_index'] and index_case_id is None:
+                        index_case_id = x.cleaned_data['case']
+                        # print("Index: %s" % index_case_id)
+
+            for clusterform in editclusterforms:
+                # if clusterform.is_valid():
+                clusterform.instance.index_case = index_case_id
+                # clusterform.cleaned_data['details'] = "TESTING"
+                # print("Index case set to: %s" % clusterform.cleaned_data['index_case'])
+                clusterform.save()
+                # print("Cleaned data: %s" % clusterform.cleaned_data['index_case'])
+
+            for deleted in editclusterforms.deleted_forms:
+                # print(deleted)
+                case = deleted.instance.case
+                cluster = Clusters.objects.get(cluster_id=cluster_id)
+                ClusterCaseJoin.objects.get(case=case, cluster=cluster).delete()
+                messages.success(request, "Case %s removed from cluster %s." % (case.case_id, cluster_id))
+
+            remaining_cases = len(ClusterCaseJoin.objects.filter(cluster=cluster))
+            # print(remaining_cases)
+            if remaining_cases == 0:
+                cluster.delete()
+                messages.success(request, "Cluster %s is empty and has been deleted." % cluster_id)
 
             if 'save_and_exit' in request.POST:
                 # print('save_exit')
                 messages.success(request, "Case %s set as the index for cluster %s." % (index_case_id, cluster_id))
-                return redirect('info', cttype='C', pid=this_case_id)
+                return redirect(page, cttype='C', pid=this_case_id)
             else:
                 ClusterCaseJoin.objects.filter(cluster=cluster).delete()
                 cluster.delete()
@@ -1507,20 +1611,22 @@ def edit_case_cluster(request, this_case_id, cluster_id):
         else:
             messages.error(request, "You must select an index case for this cluster.")
     else:
-        if selected:
-            editclusterform = ClusterEditForm(cluster=cluster, initial={'case': selected.case_id})
-        else:
-            editclusterform = ClusterEditForm(cluster=cluster)
-        # print(editclusterform)
-        return render(request, 'link-cases/edit-cluster.html', {'editclusterform': editclusterform,
+        editclusterforms = ClusterFormset(queryset=ClusterCaseQS, prefix='cluster')
+        # if selected:
+        #     editclusterforms = ClusterFormset(queryset=ClusterCaseQS, initial={'case': selected.case_id})
+        #     # editclusterform = ClusterEditForm(instance=cluster, initial={'case': selected.case_id})
+        # else:
+        #     editclusterforms = ClusterFormset(queryset=ClusterCaseQS, prefix='cluster')
+        #     # editclusterform = ClusterEditForm(instance=cluster)
+        # # print(editclusterform)
+        return render(request, 'link-cases/edit-cluster.html', {'editclusterforms': editclusterforms,
                                                           })
-
 
 @login_required(login_url='/accounts/login/')
 def change_password(request):
     if request.method == 'POST':
         form = PasswordChangeForm(request.user, request.POST)
-        print(form.is_valid())
+        # print(form.is_valid())
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # Important!
@@ -1537,48 +1643,185 @@ def change_password(request):
 
 @login_required(login_url='/accounts/login/')
 def search_results(request):
-    query = request.GET.get('q')
+    queries = request.GET.get('q').split()
+    print(queries)
 
-    persons = Persons.objects.filter(Q(last__icontains=query) | Q(first__icontains=query))
+    import functools
+    import operator
+
+    qset = functools.reduce(operator.__or__, [Q(last__icontains=query) | Q(first__icontains=query) for query in queries])
+    persons = Persons.objects.filter(qset)
     cases_p = None
     contacts_p = None
     cases = None
     contacts = None
 
-    print(persons)
+    # print(persons)
 
     if persons:
         cases_p = Cases.objects.filter(person_id__in=persons)
         contacts_p = Contacts.objects.filter(person_id__in=persons)
 
     # print(cases_p)
+    is_case = False
+    is_contact = False
+    is_probable = False
+    for query in queries:
+        is_case = re.search('C\d+', query) or is_case
+        is_contact = re.search('CT\d+', query) or is_contact
+        is_probable = re.search('P\d+', query) or is_probable
 
-    is_case = re.search('C\d+', query)
-    is_contact = re.search('CT\d+', query)
-    is_probable = re.search('P\d+', query)
+    # print(is_case)
 
-    print(is_case)
-
-    if is_case is not None or is_probable is not None:
-        case_query = re.findall('\d+', query)
-        cases = Cases.objects.filter(Q(case_id=case_query[0]) | Q(old_case_no="C%s" % case_query[0]) | Q(old_case_no="P%s" % case_query[0]))
-    elif is_contact is not None:
-        contact_query = re.findall('\d+', query)
+    if is_case or is_probable:
+        case_queries = []
+        for query in queries:
+            case_queries.append(re.findall('\d+', query)[0])
+        qset2 = functools.reduce(operator.__or__, [Q(case_id=case_query) | Q(old_case_no="C%s" % case_query) | Q(old_case_no="P%s" % case_query) for case_query in case_queries])
+        cases = Cases.objects.filter(qset2)
+    elif is_contact:
+        contact_queries = []
+        for query in queries:
+            contact_queries.append(re.findall('\d+', query)[0])
+        qset3 = functools.reduce(operator.__or__, [Q(contact_id=contact_query) | Q(old_contact_no="CT%s" % contact_query) for contact_query in contact_queries])
         # print(contact_query)
-        contacts = Contacts.objects.filter(
-            Q(contact_id=contact_query[0]) | Q(old_contact_no="CT%s" % contact_query[0]))
-    elif is_probable is not None:
-        case_query = re.findall('\d+', query)
-        cases = Cases.objects.filter(Q(old_case_no="P%s" % case_query[0]))
+        contacts = Contacts.objects.filter(qset3)
+    elif is_probable:
+        case_queries = []
+        for query in queries:
+            case_queries.append(re.findall('\d+', query)[0])
+        qset4 = functools.reduce(operator.__or__, [Q(old_case_no="P%s" % case_query) for case_query in case_queries])
+        # case_query = re.findall('\d+', query)
+        cases = Cases.objects.filter(qset4)
     elif len(persons) == 0:
-        print("should be the case")
-        case_query = re.findall('\d+', query)
-        cases = Cases.objects.filter(Q(case_id=case_query[0]) | Q(old_case_no="C%s" % case_query[0]))
-        contacts = Contacts.objects.filter(
-            Q(contact_id=case_query[0]) | Q(old_contact_no="CT%s" % case_query[0]))
+        case_queries = []
+        for query in queries:
+            reg = re.findall('\d+', query)
+            print(reg)
+            if len(reg) > 0:
+                case_queries.append(reg[0])
+
+        print(case_queries)
+        if len(case_queries) > 0:
+            qset5 = functools.reduce(operator.__or__, [Q(case_id=case_query) | Q(old_case_no="C%s" % case_query) for case_query in case_queries])
+            qset6 = functools.reduce(operator.__or__, [Q(contact_id=case_query) | Q(old_contact_no="CT%s" % case_query) for case_query in case_queries])
+            cases = Cases.objects.filter(qset5)
+            contacts = Contacts.objects.filter(qset6)
 
     return render(request, 'search.html', {'cases_p': cases_p,
                                            'contacts_p': contacts_p,
                                            'cases': cases,
                                            'contacts': contacts,
                                            })
+
+
+@login_required(login_url='/accounts/login/')
+def new_outbreak(request):
+
+    LocationPhoneFormSet = modelformset_factory(Phones, form=NewPhoneNumberForm, extra=1)
+
+    locationaddress = Addresses()
+    location = Locations()
+    outbreak = Outbreaks()
+
+    if request.method == "POST":
+
+        locationform = NewLocation(request.POST, instance=location)
+        phoneforms = LocationPhoneFormSet(request.POST, prefix='phone')
+        locationaddressform = NewAddressForm(request.POST, instance=locationaddress)
+        outbreakform = NewOutbreakForm(request.POST, instance=outbreak)
+
+
+    else:
+
+        locationform = NewLocation(instance=location)
+        phoneforms = LocationPhoneFormSet(prefix='phone')
+        locationaddressform = NewAddressForm(instance=locationaddress)
+        outbreakform = NewOutbreakForm(instance=outbreak)
+
+        return render(request, 'outbreaks/new-outbreak.html', {'locationform': locationform,
+                                                               'phoneforms': phoneforms,
+                                                               'locationaddressform': locationaddressform,
+                                                               'outbreakform': outbreakform,
+                                                               })
+
+
+@login_required(login_url='/accounts/login/')
+def add_existing_contact(request,cttype, case_id):
+
+    if request.method == 'POST':
+
+        contactlinkform = ContactBulkForm(request.POST)
+        # caselinkform.fields['cases'].initial = Cases.objects.get(case_id=case_id)
+
+        # print("HH form valid?")
+        # print(householdform.is_valid())
+        if contactlinkform.is_valid():
+            contacts = contactlinkform.cleaned_data['contacts']
+
+            exposure_list = []
+
+            for contact in contacts:
+                # print(person.person_id)
+                this_exposure = Exposures(exposing_case_id=case_id)
+                this_exposure.save()
+
+                exposure_contact = ContactExposureJoin(contact=contact, exposure=this_exposure)
+                exposure_contact.save()
+                exposure_list.append(exposure_contact.exposure_id)
+
+            if 'continue' in request.POST:
+                # print('save_exit')
+                return redirect('edit-bulk-contacts', cttype=cttype, case_id=case_id, contact_list=exposure_list)
+            else:
+                return redirect('case-investigation', cttype=cttype, pid=case_id)
+
+    else:
+        contactlinkform = ContactBulkForm()
+        # caselinkform.fields['cases'].initial = Cases.objects.get(case_id=case_id)
+
+    return render(request, 'contacts/bulk-add-contact.html', {'contactlinkform': contactlinkform,
+                                                              })
+
+
+@login_required(login_url='/accounts/login/')
+def edit_bulk_contacts(request, cttype, case_id, contact_list):
+
+    contact_list = contact_list[1:(len(contact_list)-1)]
+    contact_list = contact_list.replace(" ", "")
+    contact_list = contact_list.split(",")
+    # print(contact_list)
+    contact_query = ContactExposureJoin.objects.filter(exposure_id__in=contact_list)
+    exposure_query = Exposures.objects.filter(exposure_id__in=contact_list)
+    # print(contact_query)
+    ContactFormSet = modelformset_factory(Exposures, form=ContactBulkEditForm, extra=0)
+
+    print(contact_query)
+    print(exposure_query)
+
+    contactformhelper = ContactBulkEditFormHelper()
+
+    if request.method == 'POST':
+        contactforms = ContactFormSet(request.POST,
+                                      queryset=exposure_query,
+                                      prefix="exposure")
+
+        if contactforms.is_valid():
+
+            for contactform in contactforms:
+                if contactform.is_valid():
+                    contactform.save()
+
+            if 'save_and_exit' in request.POST:
+                # print('save_exit')
+                return redirect('case-investigation', cttype=cttype, pid=case_id)
+            else:
+                return redirect('case-investigation', cttype=cttype, pid=case_id)
+
+    else:
+        contactforms = ContactFormSet(queryset=exposure_query,
+                                      prefix="exposure")
+
+    return render(request, 'contacts/bulk-edit-contacts.html', {'contactforms': contactforms,
+                                                              'contactformhelper': contactformhelper,
+                                                              })

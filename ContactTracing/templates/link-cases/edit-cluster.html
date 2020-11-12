@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
 
 {% block content2 %}
-
+<h2>Edit Cluster Details</h2>
+Enter the date the case was last exposed to the index case, enter any details about the link, and select which case is the index case in this cluster.
     {% load crispy_forms_tags %}
 <!--<div class="d-flex justify-content-left">-->
     <form method="post" class="d-flex justify-content-center">
         <div class="form-group">
             <div class="row">
-                {{ editcluisterform.errors }}
+                {{ editclusterform.errors }}
                 {% crispy editclusterforms %}
             </div>
 
@@ -15,7 +16,7 @@
 
             <div class="row justify-content-center">
                 <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and Exit" />
-                <a href="/TracingApp/households" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
+                <a href="/assignments" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
             </div>
         </div>
 
@@ -25,8 +26,8 @@
 <script>
 	$('form').each(function() { // iterate forms
 	  var $this = $(this);
-	  $this.find('input:checkbox').click(function() {
-	    var group = 'input:checkbox';
+	  $this.find('input[name*="is_index"]').click(function() {
+	    var group = 'input[name*="is_index"]';
 	    $this.find(group).not(this).attr('checked', false).prop('checked', false); // also use prop, for real Property change
 	  });
 	});

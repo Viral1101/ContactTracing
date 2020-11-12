@@ -75,6 +75,23 @@ class Assignments(models.Model):
         managed = True
         db_table = 'assignments'
 
+    def __str__(self):
+        case = self.case
+        contact = self.contact
+        outbreak = self.outbreak
+        target = ''
+        if case is not None:
+            target = case
+        elif contact is not None:
+            target = contact
+        elif outbreak is not None:
+            target = outbreak
+        data = {'target': target,
+                'user': self.user,
+                'status': self.status}
+        output = '{target}, {user}, {status}'.format(**data)
+        return output
+
 
 class AuthGroup(models.Model):
     name = models.CharField(unique=True, max_length=150)
@@ -199,6 +216,8 @@ class Cases(models.Model):
     old_case_no = models.TextField(blank=True, null=True)
     probable = models.BooleanField(default=False)
     able_to_isolate = models.ForeignKey('BooleanTable', models.DO_NOTHING, blank=True, null=True)
+    text_follow_up = models.BooleanField(blank=True, null=True)
+    email_follow_up = models.BooleanField(blank=True, null=True)
 
     class Meta:
         managed = True
@@ -264,10 +283,18 @@ class Contacts(models.Model):
     old_contact_no = models.TextField(blank=True, null=True)
     last_exposure = models.DateField(blank=True, null=True)
     able_to_quarantine = models.ForeignKey(BooleanTable, models.DO_NOTHING, blank=True, null=True)
+    text_follow_up = models.BooleanField(blank=True, null=True)
+    email_follow_up = models.BooleanField(blank=True, null=True)
 
     class Meta:
         managed = True
         db_table = 'contacts'
+
+    def __str__(self):
+        data = {'id': self.contact_id,
+                'person': self.person}
+        output = 'CT{id}: {person}'.format(**data)
+        return output
 
 
 class DjangoAdminLog(models.Model):
@@ -377,15 +404,15 @@ class OutbreakContactJoin(models.Model):
         db_table = 'outbreak_contact_join'
 
 
-class Outbreaks(models.Model):
-    outbreak_id = models.AutoField(primary_key=True)
-    address = models.ForeignKey(Addresses, models.DO_NOTHING, blank=True, null=True)
-    phone = models.ForeignKey('Phones', models.DO_NOTHING, blank=True, null=True)
-    active = models.IntegerField()
-
-    class Meta:
-        # managed = False
-        db_table = 'outbreaks'
+# class Outbreaks(models.Model):
+#     outbreak_id = models.AutoField(primary_key=True)
+#     address = models.ForeignKey(Addresses, models.DO_NOTHING, blank=True, null=True)
+#     phone = models.ForeignKey('Phones', models.DO_NOTHING, blank=True, null=True)
+#     active = models.IntegerField()
+#
+#     class Meta:
+#         # managed = False
+#         db_table = 'outbreaks'
 
 
 class PersonEmailJoin(models.Model):
@@ -460,9 +487,9 @@ class Persons(models.Model):
             sex = "Male"
 
         data = {'first': self.first,
-                'mi': '' if self.mi is None else self.mi + ' ',
+                'mi': '' if self.mi is None else (self.mi + ' '),
                 'last': self.last,
-                'suffix': '' if self.suffix is None else ' ' + self.suffix,
+                'suffix': '' if self.suffix is None or self.suffix == '' else (' ' + self.suffix),
                 'dob': self.dob,
                 'age': self.age,
                 'sex': sex}
@@ -665,7 +692,7 @@ class ClusterCaseJoin(models.Model):
     join_id = models.AutoField(primary_key=True)
     cluster = models.ForeignKey(Clusters, models.DO_NOTHING)
     case = models.ForeignKey(Cases, models.DO_NOTHING, related_name='developed')
-    index_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True, related_name='exposing')
+    index_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True, blank=True, related_name='exposing')
     associated_contact = models.ForeignKey(Contacts, models.DO_NOTHING, null=True, related_name='associated_contact')
     last_exposed = models.DateField(null=True, blank=True)
     details = models.CharField(max_length=256, null=True, blank=True)
@@ -759,25 +786,93 @@ class AssignmentStatus(models.Model):
         return self.status
 
 
-# class Exposures(models.model):
-#     exposure_id = models.AutoField(primary_key=True)
-#     initial_exposure = models.DateField(blank=True, null=True)
-#     last_exposure = models.DateField()
-#     quarantine_end = models.DateField()
-#     location = models.CharField(max_length=128)
-#     outbreak_id = models.ForeignKey(Outbreaks, models.DO_NOTHING, null=True)
-#     exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True)
-#
-#     class Meta:
-#         managed = True
-#         db_table = 'exposures'
-#
-#
-# class PersonExposureJoin(models.model):
-#     join_id = models.AutoField(primary_key=True)
-#     person_id = models.ForeignKey(Persons, models.DO_NOTHING, null=False)
-#     exposure_id = models.ForeignKey(Exposures, models.DO_NOTHING, null=False)
-#
-#     class Meta:
-#         managed = True
-#         db_table = 'person_exposure_join'
+class Locations(models.Model):
+    location_id = models.AutoField(primary_key=True)
+    address = models.ForeignKey(Addresses, models.DO_NOTHING, null=True, blank=True)
+    name = models.CharField(max_length=256)
+
+    class Meta:
+        managed = True
+        db_table = 'locations'
+
+    def __str__(self):
+        data = {'name': self.name,
+                'address': self.address}
+        output = '{name}: {address}'.format(**data)
+        return output
+
+
+class LocationPhoneJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    location = models.ForeignKey(Locations, models.DO_NOTHING)
+    phone = models.ForeignKey(Phones, models.DO_NOTHING)
+
+    class Meta:
+        managed = True
+        db_table = 'location_phone_join'
+
+    def __str__(self):
+        return self.phone
+
+
+class Outbreaks(models.Model):
+    outbreak_id = models.AutoField(primary_key=True)
+    date_of_exposure = models.DateField(blank=True, null=True)
+    location = models.ForeignKey(Locations, models.DO_NOTHING)
+    active = models.BooleanField()
+
+    class Meta:
+        managed = True
+        db_table = 'outbreaks'
+
+    def __str__(self):
+        data = {'location': self.location,
+                'date': self.date_of_exposure}
+        output = '{location} Outbreak on:{date}'.format(**data)
+        return output
+
+
+class OutbreakManagerJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    outbreak = models.ForeignKey(Outbreaks, models.DO_NOTHING)
+    person = models.ForeignKey(Persons, models.DO_NOTHING)
+    position = models.CharField(max_length=256, null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = 'outbreak_manager_join'
+
+
+class OutbreakClusterJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    outbreak = models.ForeignKey(Outbreaks, models.DO_NOTHING)
+    cluster = models.ForeignKey(Clusters, models.DO_NOTHING)
+
+    class Meta:
+        managed = True
+        db_table = 'outbreak_cluster_join'
+
+
+class Exposures(models.Model):
+    exposure_id = models.AutoField(primary_key=True)
+    initial_exposure = models.DateField(blank=True, null=True)
+    last_exposure = models.DateField(blank=True, null=True)
+    quarantine_end = models.DateField(blank=True, null=True)
+    relation_to_case = models.TextField(blank=True, null=True)
+    location = models.ForeignKey(Locations, models.DO_NOTHING, null=True)
+    outbreak = models.ForeignKey(Outbreaks, models.DO_NOTHING, null=True)
+    exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'exposures'
+
+
+class ContactExposureJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    contact = models.ForeignKey(Contacts, models.DO_NOTHING, null=False)
+    exposure = models.ForeignKey(Exposures, models.DO_NOTHING, null=False)
+
+    class Meta:
+        managed = True
+        db_table = 'contact_exposure_join'

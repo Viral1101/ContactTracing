@@ -32,11 +32,12 @@ class CaseLinkForm(forms.Form):
 class ClusterEditForm(forms.ModelForm):
     is_index = forms.BooleanField(required=False)
     last_exposed = forms.DateField(widget=DatePickerInput(), required=False)
+    index_case = forms.CharField(widget=forms.HiddenInput, required=False)
+    # case = forms.CharField()
 
     class Meta:
         model = ClusterCaseJoin
-        exclude = {'index_case',
-                   'associated_contact',
+        exclude = {'associated_contact',
                    'cluster'
                    }
 
@@ -45,6 +46,11 @@ class ClusterEditForm(forms.ModelForm):
         self.form_method = 'post'
         self.helper = FormHelper(self)
         self.fields['case'].disabled = True
+        # case = self.instance.case
+        # self.instance.case = str(Cases.objects.get(case_id=case))
+        if self.instance.case == self.instance.index_case:
+            self.fields['is_index'].widget.attrs['checked'] = True
+        # self.fields['index_case'].initial = self.fields['case'].initial
         self.form_tag = False
         self.disable_csrf = True
         self.helper.layout = Layout(
@@ -58,15 +64,33 @@ class ClusterEditForm(forms.ModelForm):
                         css_class='form-row',
                     ),
                     Row(
-                        HTML(""""<p>"""),
+                        HTML("""<p>"""),
                         css_class='form-row',
                     )
                 )
             )
         )
 
+    def clean_index_case(self):
+        data = self.cleaned_data['index_case']
+        if data == '':
+            index_case = None
+        else:
+            index_case = Cases.objects.filter(case_id=data).first()
+        return index_case or None
 
-class ClusterEditForm_old(forms.Form):
+    def clean(self):
+        cleaned_data = super().clean()
+        is_index = cleaned_data['is_index']
+
+        if is_index:
+            cleaned_data['last_exposed'] = None
+            cleaned_data['details'] = None
+
+        return cleaned_data
+
+
+class ClusterEditFormOld(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.cluster = kwargs.get('cluster', None)
@@ -133,7 +157,9 @@ class NewPhoneNumberForm(forms.ModelForm):
             for phon in phone_exists:
                 min_id = min(min_id, phon.phone_id)
             self.cleaned_data['phone_id'] = min_id
-            print(self.cleaned_data['phone_id'])
+            # print(self.cleaned_data['phone_id'])
+
+        return cleaned_data
 
 
 class AddressesForm(forms.ModelForm):
@@ -293,7 +319,7 @@ class NewAddressForm(forms.ModelForm):
                             # msg = "Address exists. Check to ensure no typos."
                             # self.add_error('street', msg)
                             self.cleaned_data['address_id'] = min_id
-                            print(self.cleaned_data['address_id'])
+                            # print(self.cleaned_data['address_id'])
         return cleaned_data
 
     class Meta:
@@ -397,7 +423,7 @@ class NewPersonForm(forms.ModelForm):
 
         #     Date should only exist in the past
         if data >= datetime.date.today():
-            print('dob error')
+            # print('dob error')
             raise ValidationError(_('Invalid date - Date should be in the past'))
 
         return data
@@ -416,14 +442,14 @@ class NewPersonForm(forms.ModelForm):
         return data
 
     def clean(self):
-        print("in clean")
+        # print("in clean")
         cleaned_data = super().clean()
         first = cleaned_data.get('first')
         last = cleaned_data.get('last')
         dob = cleaned_data.get('dob')
-        print(first)
-        print(last)
-        print(dob)
+        # print(first)
+        # print(last)
+        # print(dob)
 
         try:
             if cleaned_data['pk']:
@@ -431,17 +457,17 @@ class NewPersonForm(forms.ModelForm):
         except KeyError:
             last_exists = Persons.objects.filter(last=last)
             if last_exists:
-                print("last exists")
+                # print("last exists")
                 first_exists = last_exists.filter(first=first)
                 if first_exists:
-                    print('first exists')
+                    # print('first exists')
                     dob_exists = first_exists.filter(dob=dob)
                     if dob_exists:
-                        print('dob exists')
+                        # print('dob exists')
                         msg = "Person already exists. Check First name, Last name, and Date of Birth. " \
                               "Convert existing contact?"
                         self.add_error('first', msg)
-        print("end clean")
+        # print("end clean")
         return cleaned_data
 
     class Meta:
@@ -469,6 +495,8 @@ class InvestigationCaseForm(forms.ModelForm):
     # release_date = forms.DateField(widget=DatePickerInput)
     last_follow = forms.DateField(required=False, widget=forms.HiddenInput)
     rel_pcp = forms.BooleanField(required=False)
+    text_follow_up = forms.BooleanField(required=False)
+    email_follow_up = forms.BooleanField(required=False)
 
     class Meta:
             model = Cases
@@ -512,6 +540,11 @@ class InvestigationCaseForm(forms.ModelForm):
                 Column('release_date', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
+            Row(
+                Column('text_follow_up', css_class='form-group col-md-4 mb-0'),
+                Column('email_follow_up', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
         )
 
     def clean_status(self):
@@ -550,6 +583,8 @@ class FollowUpCaseForm(forms.ModelForm):
     reqs_pcp = forms.CharField(required=False)
     probable = forms.BooleanField(required=False)
     old_case_no = forms.CharField(max_length=15, required=False)
+    text_follow_up = forms.BooleanField(required=False)
+    email_follow_up = forms.BooleanField(required=False)
 
     class Meta:
         model = Cases
@@ -587,6 +622,11 @@ class FollowUpCaseForm(forms.ModelForm):
                 Column('tent_release', css_class='form-group col-md-4 mb-0'),
                 Column('status', css_class='form-group col-md-4 mb-0'),
                 Column('release_date', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('text_follow_up', css_class='form-group col-md-4 mb-0'),
+                Column('email_follow_up', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
             Column('active', css_class='form-group col-md-4 mb-0'),
@@ -650,8 +690,8 @@ class CaseForm(forms.ModelForm):
 
     def clean_status(self):
         data = self.cleaned_data['status']
-        print(data)
-        print(Statuses.objects.get(status_id=1))
+        # print(data)
+        # print(Statuses.objects.get(status_id=1))
         if data == Statuses.objects.get(status_id=1):
             raise ValidationError(_('Invalid case status - Case should not still need investigation'))
         return data
@@ -698,7 +738,7 @@ class ContactTraceLogForm(forms.ModelForm):
         cleaned_data = super().clean()
         cleaned_data['log_date'] = datetime.date.today()
         cleaned_data['user'] = self.user
-        print(cleaned_data)
+        # print(cleaned_data)
         return cleaned_data
 
 
@@ -739,7 +779,7 @@ class NewTraceLogForm(forms.ModelForm):
         cleaned_data = super().clean()
         cleaned_data['log_date'] = datetime.date.today()
         # cleaned_data['user'] = self.user
-        print(cleaned_data)
+        # print(cleaned_data)
         return cleaned_data
 
 
@@ -1089,7 +1129,7 @@ class NewAssignment(forms.ModelForm):
 
 class AddContactAddress(forms.ModelForm):
 
-    use_case_address = forms.BooleanField(required=False)
+    # use_case_address = forms.BooleanField(required=False)
     street = forms.CharField(required=False)
     street2 = forms.CharField(required=False)
     city = forms.CharField(required=False)
@@ -1107,10 +1147,10 @@ class AddContactAddress(forms.ModelForm):
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
-            Row(
-                Column('use_case_address', css_class='form-group col-md-5 mb-0'),
-                css_class='form-row'
-            ),
+            # Row(
+            #     Column('use_case_address', css_class='form-group col-md-5 mb-0'),
+            #     css_class='form-row'
+            # ),
             Row(
                 Column('street', css_class='form-group col-md-5 mb-0'),
                 Column('street2', css_class='form-group col-md-5 mb-0'),
@@ -1161,10 +1201,10 @@ class AddContactAddress(forms.ModelForm):
                             self.cleaned_data['address_id'] = min_id
                             print(self.cleaned_data['address_id'])
 
-        use_case = cleaned_data['use_case_address']
-        if use_case and post_code == '':
-            cleaned_data['post_code'] = "11111"
-            # raise ValidationError(_('Invalid zip - Zip should be in the form ##### if not using the case address.'))
+        # use_case = cleaned_data['use_case_address']
+        # if use_case and post_code == '':
+        #     cleaned_data['post_code'] = "11111"
+        #     # raise ValidationError(_('Invalid zip - Zip should be in the form ##### if not using the case address.'))
 
         print(cleaned_data)
         return cleaned_data
@@ -1177,10 +1217,10 @@ class AddContactAddressHelper(FormHelper):
         self.form_tag = False
         self.disable_csrf = True
         self.layout = Layout(
-            Row(
-                Column('use_case_address', css_class='form-group col-md-5 mb-0'),
-                css_class='form-row'
-            ),
+            # Row(
+            #     Column('use_case_address', css_class='form-group col-md-5 mb-0'),
+            #     css_class='form-row'
+            # ),
             Row(
                 Column('street', css_class='form-group col-md-5 mb-0'),
                 Column('street2', css_class='form-group col-md-5 mb-0'),
@@ -1210,9 +1250,9 @@ class AddContactPhone(forms.ModelForm):
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
-            Row(
-                Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
-                css_class='form-row'),
+            # Row(
+            #     Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
+            #     css_class='form-row'),
             Row(
                 Column('phone_number', css_class='form-group col-md-3 mb-0 phone'),
                 css_class='form-row'
@@ -1232,6 +1272,40 @@ class AddCasePhoneForContact(forms.Form):
         self.helper.layout = Layout(
             Row(
                 Column('use_case_phone', css_class='form-group col-md-5 mb-0'),
+                css_class='form-row'
+            ),
+        )
+
+
+class AddCaseEmailForContact(forms.Form):
+    use_case_email = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('use_case_email', css_class='form-group col-md-5 mb-0'),
+                css_class='form-row'
+            ),
+        )
+
+
+class AddCaseAddressForContact(forms.Form):
+    use_case_address = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
+        self.helper.layout = Layout(
+            Row(
+                Column('use_case_address', css_class='form-group col-md-5 mb-0'),
                 css_class='form-row'
             ),
         )
@@ -1287,6 +1361,9 @@ class AddContactForm(forms.ModelForm):
     class Meta:
         model = Contacts
         exclude = ['person',
+                   'init_exposure',
+                   'last_exposure',
+                   'tent_qt_end',
                    ]
 
     def __init__(self, *args, **kwargs):
@@ -1297,12 +1374,12 @@ class AddContactForm(forms.ModelForm):
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
-            Row(
-                Column('init_exposure', css_class='form-group col-md-4 mb-0'),
-                Column('last_exposure', css_class='form-group col-md-4 mb-0'),
-                Column('tent_qt_end', css_class='form-group col-md-4 mb-0'),
-                css_class='form-row'
-            ),
+            # Row(
+            #     Column('init_exposure', css_class='form-group col-md-4 mb-0'),
+            #     Column('last_exposure', css_class='form-group col-md-4 mb-0'),
+            #     Column('tent_qt_end', css_class='form-group col-md-4 mb-0'),
+            #     css_class='form-row'
+            # ),
             Row(
                 Column('old_contact_no', css_class='form-group col-md-4 mb-0'),
                 Column('can_quarantine', css_class='form-group col-md-4 mb-0'),
@@ -1585,7 +1662,7 @@ class EmailFormHelper(FormHelper):
 
 class AddContactEmailForm(forms.ModelForm):
 
-    use_case_email = forms.BooleanField(required=False)
+    # use_case_email = forms.BooleanField(required=False)
     email_address = forms.EmailField(required=False)
 
     class Meta:
@@ -1599,9 +1676,9 @@ class AddContactEmailForm(forms.ModelForm):
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
             Div(
-                Row(
-                    Column('use_case_email', css_class='form-group col-md-5 mb-0'),
-                    css_class='form-row'),
+                # Row(
+                #     Column('use_case_email', css_class='form-group col-md-5 mb-0'),
+                #     css_class='form-row'),
                 Row(
                     Column('email_address', css_class='form-group col-md-4 mb-0'),
                     css_class='form-row'
@@ -1618,9 +1695,9 @@ class AddContactEmailFormHelper(FormHelper):
         self.disable_csrf = True
         self.layout = Layout(
             Div(
-                Row(
-                    Column('use_case_email', css_class='form-group col-md-5 mb-0'),
-                    css_class='form-row'),
+                # Row(
+                #     Column('use_case_email', css_class='form-group col-md-5 mb-0'),
+                #     css_class='form-row'),
                 Row(
                     Column('email_address', css_class='form-group col-md-4 mb-0'),
                     css_class='form-row'
@@ -1638,3 +1715,213 @@ class AssignCaseForm(forms.Form):
         self.form_tag = False
         self.disable_csrf = True
         self.empty_permitted = False
+
+
+class NewOutbreakForm(forms.ModelForm):
+
+    class Meta:
+        model = Outbreaks
+        fields = {'date_of_exposure',
+                  }
+
+
+class NewLocation(forms.ModelForm):
+
+    class Meta:
+        model = Locations
+        fields = {'name',
+                  }
+
+
+class NewOutbreakManager(forms.ModelForm):
+
+    class Meta:
+        model = OutbreakManagerJoin
+        fields = {'position',
+                  'person'
+                  }
+
+
+class ContactExposureForm(forms.ModelForm):
+
+    initial_exposure = forms.DateField(widget=DatePickerInput(), required=False)
+    last_exposure = forms.DateField(widget=DatePickerInput(), required=False)
+    quarantine_end = forms.DateField(widget=DatePickerInput(), required=False)
+    relation_to_case = forms.CharField(required=False)
+    exposing_case = forms.ModelChoiceField(queryset=Cases.objects.all(), required=False)
+
+    class Meta:
+        model = Exposures
+        fields = {'initial_exposure',
+                  'last_exposure',
+                  'quarantine_end',
+                  'exposing_case',
+                  'relation_to_case',
+                  }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        self.layout = Layout(
+            Div(
+                Div(
+                    Row(
+                        Column('initial_exposure', css_class='form-group col-md-4 mb-0'),
+                        Column('last_exposure', css_class='form-group col-md-4 mb-0'),
+                        Column('quarantine_end', css_class='form-group col-md-4 mb-0'),
+                        css_class='form-row'
+                    ),
+                    Row(
+                        Column('exposing_case', css_class='form-group col-md-4 mb-0'),
+                        Column('relation_to_case', css_class='form-group col-md-4 mb-0'),
+                        Column('DELETE', css_class='form-group col-md-4 mb-0'),
+                        css_class='form-row'
+                    ),
+                    css_class='form-row card'
+                )
+            )
+        )
+
+
+class ContactExposureFormSetHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        # self.render_unmentioned_fields = True
+        self.layout = Layout(
+            Div(
+                Div(
+                    Row(
+                        Column('initial_exposure', css_class='form-group col-md-4 mb-0'),
+                        Column('last_exposure', css_class='form-group col-md-4 mb-0'),
+                        Column('quarantine_end', css_class='form-group col-md-4 mb-0'),
+                        css_class='form-row'
+                    ),
+                    Row(
+                        Column('exposing_case', css_class='form-group col-md-4 mb-0'),
+                        Column('relation_to_case', css_class='form-group col-md-4 mb-0'),
+                        Column('DELETE', css_class='form-group col-md-4 mb-0'),
+                        css_class='form-row'
+                    ),
+                    css_class='form-row card'
+                )
+            )
+        )
+
+
+class ContactBulkForm(forms.Form):
+    contacts = forms.ModelMultipleChoiceField(queryset=Contacts.objects.all(),
+                                              label=_('Select contacts exposed by this case'),
+                                              required=False,
+                                              widget=FilteredSelectMultiple(_('contacts'),
+                                                                            False,
+                                                                            ))
+
+    class Media:
+        css = {
+            'all': ('/static/admin/css/widgets.css',),
+        }
+        js = ('/admin/jsi18n',)
+
+
+class ContactBulkEditForm(forms.ModelForm):
+
+    initial_exposure = forms.DateField(widget=DatePickerInput(), required=False)
+    last_exposure = forms.DateField(widget=DatePickerInput(), required=False)
+    quarantine_end = forms.DateField(widget=DatePickerInput(), required=False)
+    relation_to_case = forms.CharField(required=False)
+    name = forms.CharField(required=False)
+    exposure_id = forms.CharField(required=False)
+
+    class Meta:
+        model = Exposures
+        fields = {'initial_exposure',
+                  'last_exposure',
+                  'quarantine_end',
+                  'relation_to_case',
+                  'exposure_id',
+                  }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        print(self.instance)
+        join_obj = ContactExposureJoin.objects.get(exposure=self.instance)
+        self.initial['name'] = join_obj.contact
+        self.initial['exposure_id'] = self.instance.exposure_id
+        print(self.instance.exposure_id)
+        self.fields['name'].disabled = True
+        # self.form_tag = False
+        # self.disable_csrf = True
+        self.layout = Layout(
+            Div(
+                Div(
+                    Div(
+                        Row(
+                            Column('name', css_class='form-group col-md-6 mb-0'),
+                            Column('relation_to_case', css_class='form-group col-md-4 mb-0'),
+                            Column('exposure_id', css_class='form-group col-md-2 mb-0'),
+                            css_class='form-row'
+                        ),
+                        css_class='card-header'
+                    ),
+                    Div(
+                        Row(
+                            Column('initial_exposure', css_class='form-group col-md-4 mb-0'),
+                            Column('last_exposure', css_class='form-group col-md-4 mb-0'),
+                            Column('quarantine_end', css_class='form-group col-md-4 mb-0'),
+                            css_class='form-row'
+                        ),
+                        css_class=' card-body'
+                    ),
+                    css_class='card'
+                )
+            )
+        )
+
+
+class ContactBulkEditFormHelper(FormHelper):
+
+    class Meta:
+        model = Exposures
+        fields = {'initial_exposure',
+                  'last_exposure',
+                  'quarantine_end',
+                  'relation_to_case',
+                  'exposure_id',
+                  }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        # self.form_tag = False
+        # self.disable_csrf = True
+        self.layout = Layout(
+            Div(
+                Div(
+                    Div(
+                        Row(
+                            Column('name', css_class='form-group col-md-4 mb-0'),
+                            Column('relation_to_case', css_class='form-group col-md-4 mb-0'),
+                            Column('exposure_id', css_class='form-group col-md-2 mb-0'),
+                            css_class='form-row'
+                        ),
+                        css_class='card-header'
+                    ),
+                    Div(
+                        Row(
+                            Column('initial_exposure', css_class='form-group col-md-4 mb-0'),
+                            Column('last_exposure', css_class='form-group col-md-4 mb-0'),
+                            Column('quarantine_end', css_class='form-group col-md-4 mb-0'),
+                            css_class='form-row'
+                        ),
+                        css_class=' card-body'
+                    ),
+                    css_class='card'
+                )
+            )
+        )

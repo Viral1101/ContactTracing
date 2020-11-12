@@ -17,7 +17,12 @@
 <input type="button" name="add_email" value="Add Email" class="btn btn-info" id="button-id-add_email">
 {% crispy newtestforms testformhelper %}
 <input type="button" name="add_test" value="Add Test" class="btn btn-info" id="button-id-add_test">
-{% crispy caseform %}
+
+{% if type == 'C' %}{% crispy caseform %}
+{% else %}<h3>Exposures</h3>
+{% crispy exposureforms exposureformhelper %}
+<input type="button" name="add_exposure" value="Add Exposure" class="btn btn-info" id="button-id-add_exposure">
+{% endif %}
 {% include 'followup/old-symptom-logs.html' %}
 {% crispy new_symptomforms symptomloghelper %}
 <input type="button" name="add_symptom" value="Add Symptom" class="btn btn-info" id="button-id-add_symptom">
@@ -47,17 +52,22 @@
 <div id="empty_email" style="display:none">
     {% crispy emailforms.empty_form emailformhelper %}
 </div>
+<div id="empty_exposure" style="display:none">
+    {% crispy exposureforms.empty_form exposureformhelper %}
+</div>
 <div id="empty_symptom" style="display:none">
     {% crispy new_symptomforms.empty_form symptomloghelper %}
 </div>
 
     <p></p>
     <div class="form-row">
-        <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />
+        <input class="btn btn-success col-md-2 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />
         {% if type == 'C' %}
-            <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_add_contacts" value="Save and Add Contacts" />
+            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_link_cases" value="Save and Link Cases" />
+            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_add_existing_contacts" value="Link Existing Contacts" />
+            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_add_contacts" value="Save and Add News Contacts" />
         {% endif %}
-        <a href="/TracingApp/assignments" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
+        <a href="/TracingApp/assignments" class="btn btn-danger col-md-2 mr-md-3">Cancel</a>
     </div>
 
 </form>
@@ -73,6 +83,12 @@
 	var form_idx = $('#id_phone-TOTAL_FORMS').val();
 	$('#div_id_phone-'+(parseInt(form_idx)-1)+'-phone_number').parent().parent().parent().append($('#empty_phone').html().replace(/__prefix__/g, form_idx));
 	$('#id_phone-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+    $('#button-id-add_exposure').click(function() {
+	var form_idx = $('#id_exposure-TOTAL_FORMS').val();
+	$('#div_id_exposure-'+(parseInt(form_idx)-1)+'-initial_exposure').parent().parent().parent().parent().append($('#empty_exposure').html().replace(/__prefix__/g, form_idx));
+	$('#id_exposure-TOTAL_FORMS').val(parseInt(form_idx) + 1);
 });
 
     $('#button-id-add_address').click(function() {

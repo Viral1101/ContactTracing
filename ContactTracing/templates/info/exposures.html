@@ -1,0 +1,33 @@
+{% if exposures %}
+<table class="table table-striped">
+    <thead class="thead-light">
+        <tr>
+            <th>Initial Exposure</th>
+            <th>Last Exposure</th>
+            <th>Quarantine End</th>
+            <th>Exposing Case</th>
+            <th>Relation to Case</th>
+            <th>Location</th>
+            <th>Outbreak</th>
+        </tr>
+    </thead>
+    {% for exposure in exposures %}
+    <tr>
+        <td>{{ exposure.exposure.initial_exposure }}</td>
+        <td>{{ exposure.exposure.last_exposure }}</td>
+        <td>{{ exposure.exposure.quarantine_end }}</td>
+        <td>{% if exposure.exposure.exposing_case %}
+            <a href="/TracingApp/info/C/{{ exposure.exposure.exposing_case.case_id }}">
+                C{{ exposure.exposure.exposing_case }}
+            </a>
+            {% else %}
+            No PCHD case
+            {% endif %}
+        </td>
+        <td>{{ exposure.exposure.relation_to_case }}</td>
+        <td>{{ exposure.exposure.location.name }}</td>
+        <td>{{ exposure.exposure.outbreak.outbreak_id }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}

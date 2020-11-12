@@ -1,26 +1,29 @@
 {% extends 'base.html' %}
 
 {% block content2 %}
-
+<h2>Edit Exposure Details</h2>
+Enter the date the contact was first exposed and last exposed to the case. Calculate the quarantine period.
     {% load crispy_forms_tags %}
 <!--<div class="d-flex justify-content-left">-->
     <form method="post" class="d-flex justify-content-center">
         <div class="form-group">
             <div class="row">
-                {% crispy caselinkform %}
+                {% if contactforms.errors %}
+                {{ contactforms.errors.as_ul }}
+                {% endif %}
+                {% crispy contactforms contactformhelper %}
             </div>
-
-            <script type="text/javascript" src="{% url 'jsi18n' %}"></script>
 
             <p></p>
 
             <div class="row justify-content-center">
-                <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="continue" value="Continue" />
+                <input class="btn btn-primary col-md-3 mr-md-3" type="submit" name="save_and_exit" value="Save and Exit" />
                 <a href="/assignments" class="btn btn-danger col-md-3 mr-md-3">Cancel</a>
             </div>
         </div>
 
     </form>
+
 <!--</div>-->
 
 {% endblock %}

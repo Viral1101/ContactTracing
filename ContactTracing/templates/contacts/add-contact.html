@@ -10,9 +10,10 @@
 
 <label><h4>Personal Identification</h4></label>
 {% crispy personform %}
-{% crispy relationform %}
+
 <label><h4>Address(es)</h4></label>
 <div>
+    {% crispy usecaseaddressform %}
 {% crispy addressforms addressformhelper %}
 </div>
 <input type="button" name="add_address" value="Add Address" class="btn btn-info" id="button-id-add_address"/>
@@ -23,11 +24,14 @@
     {% crispy phoneforms phoneformhelper %}
 </div>
 <input type="button" name="add_phone" value="Add Phone" class="btn btn-info" id="button-id-add_phone">
+    {% crispy usecaseemailform %}
 {% crispy emailforms emailformhelper %}
 <input type="button" name="add_email" value="Add Email" class="btn btn-info" id="button-id-add_email">
 <p></p>
 <label><h4>Contact Information</h4></label>
 {% crispy contactform %}
+{% crispy exposureforms exposureformhelper %}
+<input type="button" name="add_exposure" value="Add Exposure" class="btn btn-info" id="button-id-add_exposure">
 <p></p>
 <label><h4>Call Log</h4></label>
 {% crispy logform %}
@@ -51,6 +55,9 @@
     });
 });
     </script>
+</div>
+<div id="empty_exposure" style="display:none">
+    {% crispy exposureforms.empty_form exposureformhelper %}
 </div>
 <div id="empty_symptom" style="display:none">
     {% crispy symptomlogforms.empty_form symptomloghelper %}
@@ -83,6 +90,12 @@ $('#button-id-add_email').click(function() {
 	var form_idx = $('#id_email-TOTAL_FORMS').val();
 	$('#div_id_email-'+(parseInt(form_idx)-1)+'-email_address').parent().parent().parent().append($('#empty_email').html().replace(/__prefix__/g, form_idx));
 	$('#id_email-TOTAL_FORMS').val(parseInt(form_idx) + 1);
+});
+
+$('#button-id-add_exposure').click(function() {
+	var form_idx = $('#id_exposure-TOTAL_FORMS').val();
+	$('#div_id_exposure-'+(parseInt(form_idx)-1)+'-initial_exposure').parent().parent().parent().parent().append($('#empty_exposure').html().replace(/__prefix__/g, form_idx));
+	$('#id_exposure-TOTAL_FORMS').val(parseInt(form_idx) + 1);
 });
 
 $('#button-id-add_address').click(function() {

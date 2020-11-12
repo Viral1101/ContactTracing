@@ -3,22 +3,26 @@
 <table class="table">
     <thead class="thead-light">
         <tr>
-            <th>Case Id</th>
+            <th>Cluster ID</th>
+            <th>Case ID</th>
             <th>Name</th>
             <th>Confirmed Positive</th>
             <th>Status</th>
             <th>Release Date</th>
             <th>Last Exposure Date</th>
+            <th>Details</th>
         </tr>
     </thead>
     {% for upstream in upstream_cases %}
     <tr>
+        <td><a href="/TracingApp/link-cases/info/C/{{ case.case_id }}/cluster/{{ upstream.cluster.cluster_id }}">{{ upstream.cluster.cluster_id }}</a></td>
         <td><a href="/TracingApp/info/C/{{ upstream.index_case.case_id }}">C{{ upstream.index_case.case_id }}</a></td>
         <td>{{ upstream.index_case.person.first }} {{ upstream.index_case.person.last }}</td>
         <td>{% if upstream.index_case.confirmed > 0 %}Confirmed{% else %}Unconfirmed/Probable{% endif %}</td>
         <td>{{ upstream.index_case.status.status }}</td>
         <td>{% if upstream.index_case.release_date %}{{ upstream.index_case.release_date }}{% else %}N/A{% endif %}</td>
-        <td>{{ upstream.associated_contact.last_exposure }}</td>
+        <td>{{ upstream.last_exposed }}</td>
+        <td>{{ upstream.details }}</td>
     </tr>
     {% endfor %}
 </table>
@@ -28,22 +32,26 @@
 <table class="table">
     <thead class="thead-light">
         <tr>
-            <th>Case Id</th>
+            <th>Cluster ID</th>
+            <th>Case ID</th>
             <th>Name</th>
             <th>Confirmed Positive</th>
             <th>Status</th>
             <th>Release Date</th>
             <th>Last Exposure Date</th>
+            <th>Details</th>
         </tr>
     </thead>
     {% for downstream in downstream_cases %}
     <tr>
+        <td><a href="/TracingApp/link-cases/info/C/{{ case.case_id }}/cluster/{{ downstream.cluster.cluster_id }}">{{ downstream.cluster.cluster_id }}</a></td>
         <td><a href="/TracingApp/info/C/{{ downstream.case.case_id }}">C{{ downstream.case.case_id }}</a></td>
         <td>{{ downstream.case.person.first }} {{ downstream.case.person.last }}</td>
         <td>{{ downstream.case.confirmed }}</td>
         <td>{{ downstream.case.status.status }}</td>
         <td>{{ downstream.case.release_date }}</td>
-        <td>{{ downstream.associated_contact.last_exposure }}</td>
+        <td>{{ downstream.last_exposed }}</td>
+        <td>{{ downstream.details }}</td>
     </tr>
     {% endfor %}
 </table>
