@@ -438,7 +438,7 @@ def case_investigation(request, cttype, pid):
         test_extra = 0
     else:
         test_extra = 1
-    email = PersonEmailJoin.objects(person=case.person)
+    email = PersonEmailJoin.objects.filter(person=case.person)
     if len(email) > 0:
         email_extra = 0
     else:

@@ -367,6 +367,7 @@ class PersonForm(forms.ModelForm):
 
     sex = forms.TypedChoiceField(choices=sexes, coerce=str)
     dob = forms.DateField(widget=DatePickerInput(), required=False)
+    contact_pref = forms.ModelChoiceField(queryset=ContactPrefs.objects.all(), required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -386,6 +387,7 @@ class PersonForm(forms.ModelForm):
                 Column('sex', css_class='form-group col-md-2 mb-0'),
                 Column('dob', css_class='form-group col-md-4 mb-0'),
                 Column('age', css_class='form-group col-md-2 mb-0'),
+                Column('contact_pref', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
         )
@@ -417,6 +419,7 @@ class NewPersonForm(forms.ModelForm):
 
     sex = forms.TypedChoiceField(choices=sexes, coerce=str)
     dob = forms.DateField(widget=DatePickerInput(), required=False)
+    contact_pref = forms.ModelChoiceField(queryset=ContactPrefs.objects.all(), required=False)
 
     def clean_dob(self):
         data = self.cleaned_data['dob']
@@ -479,6 +482,7 @@ class NewPersonForm(forms.ModelForm):
                   'sex',
                   'dob',
                   'age',
+                  'contact_pref',
                   ]
 
 
@@ -880,6 +884,7 @@ class PersonFormSetHelper(FormHelper):
                 Column('sex', css_class='form-group col-md-2 mb-0'),
                 Column('dob', css_class='form-group col-md-4 mb-0'),
                 Column('age', css_class='form-group col-md-2 mb-0'),
+                Column('contact_pref', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
         )

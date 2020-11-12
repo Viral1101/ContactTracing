@@ -30,6 +30,9 @@
                 {% endif %}
             </li>
             {% endif %}
+            {% if case.person.contact_pref.pref == 'Phonecall' or case.person.contact_pref.pref == 'Text' %}
+                <p class="blockquote-footer">Prefers {{ case.person.contact_pref.pref }}</p>
+            {% endif %}
         {% endfor %}
         </ul>
         {% endif %}
@@ -50,6 +53,9 @@
             {% endif %}
         {% endfor %}
         </ul>
+          {% if case.person.contact_pref.pref == 'Email' %}
+                <p class="blockquote-footer">Prefers {{ case.person.contact_pref.pref }}</p>
+          {% endif %}
         {% endif %}
       </div>
     </div>

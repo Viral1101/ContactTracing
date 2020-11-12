@@ -248,6 +248,9 @@ class ContactPrefs(models.Model):
         managed = False
         db_table = 'contact_prefs'
 
+    def __str__(self):
+        return self.pref
+
 
 class ContactSxJoin(models.Model):
     join_id = models.AutoField(primary_key=True)
