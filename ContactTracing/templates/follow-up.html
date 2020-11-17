@@ -18,8 +18,9 @@
 {% crispy newtestforms testformhelper %}
 <input type="button" name="add_test" value="Add Test" class="btn btn-info" id="button-id-add_test">
 
-{% if type == 'C' %}{% crispy caseform %}
-{% else %}<h3>Exposures</h3>
+{% crispy caseform %}
+{% if type == 'CT' %}
+    <h3>Exposures</h3>
 {% crispy exposureforms exposureformhelper %}
 <input type="button" name="add_exposure" value="Add Exposure" class="btn btn-info" id="button-id-add_exposure">
 {% endif %}
@@ -63,9 +64,9 @@
     <div class="form-row">
         <input class="btn btn-success col-md-2 mr-md-3" type="submit" name="save_and_exit" value="Save and exit" />
         {% if type == 'C' %}
-            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_link_cases" value="Save and Link Cases" />
+            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_link_cases" value="Link Existing Cases" />
             <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_add_existing_contacts" value="Link Existing Contacts" />
-            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_add_contacts" value="Save and Add News Contacts" />
+            <input class="btn btn-primary col-md-2 mr-md-3" type="submit" name="save_and_add_contacts" value="Add New Contacts" />
         {% endif %}
         <a href="/TracingApp/assignments" class="btn btn-danger col-md-2 mr-md-3">Cancel</a>
     </div>

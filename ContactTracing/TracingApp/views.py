@@ -430,6 +430,12 @@ def case_investigation(request, cttype, pid):
     if cttype != 'C':
         raise Http404("Invalid Case Type")
 
+    storage = messages.get_messages(request)
+    log_initial = []
+    for message in storage:
+        log_initial.append("<<Link created>> %s" % message)
+    log_initial = str(log_initial).strip('[]').replace("'","")
+
     case = get_object_or_404(Cases, case_id=pid)
     person = get_object_or_404(Persons, person_id=case.person_id)
     test_1 = CaseTestJoin.objects.filter(case_id=pid)
@@ -483,7 +489,7 @@ def case_investigation(request, cttype, pid):
         caseform = InvestigationCaseForm(request.POST, instance=case)
         personform = PersonForm(request.POST, instance=person)
         testforms = NewTestFormSet(request.POST, queryset=test, prefix='new_test')
-        logform = NewTraceLogForm(user, request.POST, instance=log)
+        logform = NewTraceLogForm(user, request.POST, instance=log, initial={'notes': log_initial})
 
         addressforms = AddressFormSet(request.POST, prefix='address', queryset=addressquery)
         emailforms = EmailFormSet(request.POST, prefix='email', queryset=emailquery)
@@ -628,7 +634,7 @@ def case_investigation(request, cttype, pid):
         # phonequery = PersonPhoneJoin.objects.filter(person_id=case.person_id)
         phoneforms = PhoneFormSet(queryset=phone_query, prefix='phone')
         caseform = InvestigationCaseForm(instance=case)
-        logform = NewTraceLogForm(user, instance=log)
+        logform = NewTraceLogForm(user, instance=log, initial={'notes': log_initial})
 
         symptomforms = SymptomFormSet(queryset=Symptoms.objects.none())
         symptomlogforms = SymptomLogFormSet(queryset=symptom_query, prefix='sxlog')
@@ -909,6 +915,13 @@ def followup(request, cttype, pid):
 
     pending = AssignmentStatus.objects.get(status_id=1)
 
+    storage = messages.get_messages(request)
+    log_initial = []
+    for message in storage:
+        log_initial.append("<<Link created>> %s" % message)
+    log_initial = str(log_initial).strip('[]').replace("'","")
+    # print(log_initial)
+
     if cttype == 'C':
         case = get_object_or_404(Cases, case_id=pid)
         symptom_query = CaseSxJoin.objects.filter(case_id=case)
@@ -994,7 +1007,7 @@ def followup(request, cttype, pid):
         emailforms = EmailFormSet(request.POST, queryset=Emails.objects.filter(email_id__in=email_query), prefix='email')
         symptomforms = SymptomFormSet(request.POST, queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
         tracelogforms = TraceLogFormSet(request.POST, queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
-        new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log)
+        new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log, initial={'notes': log_initial})
         new_symptomforms = NewSymptomFormSet(request.POST, prefix='sxlog',
                                              queryset=SxLog.objects.none())
         newtestforms = TestFormSet(request.POST, queryset=test_query, prefix='new_test')
@@ -1159,19 +1172,30 @@ def followup(request, cttype, pid):
                             new_case_log = CaseLogJoin(case=upgraded_case, log_id=log['log_id'])
                             new_case_log.save()
 
-                        linked_cases = CaseContactJoin.objects.filter(contact=case)
-                        # print(linked_cases)
-
-                        new_cluster = Clusters()
-                        new_cluster.save()
+                        linked_exposures = ContactExposureJoin.objects.filter(contact=case).values("exposure_id")
+                        print("Linked exposures: %s" % linked_exposures)
+                        linked_cases = Exposures.objects.filter(exposure_id__in=linked_exposures)
+                        print("Linked cases: %s" % linked_cases)
 
                         for linked_case in linked_cases:
-                            # print(linked_case.case)
+
+                            new_cluster = Clusters()
+                            new_cluster.save()
+                            print("Linked case: %s" % linked_case.exposing_case)
+
                             this_link = ClusterCaseJoin(cluster=new_cluster,
-                                                        index_case=linked_case.case,
-                                                        case=upgraded_case,
-                                                        associated_contact=this_caseform)
+                                                        index_case=linked_case.exposing_case,
+                                                        case=linked_case.exposing_case,
+                                                        )
+                            upgraded_case_cluster_link = ClusterCaseJoin(cluster=new_cluster,
+                                                                         case=upgraded_case,
+                                                                         index_case=linked_case.exposing_case,
+                                                                         associated_contact=this_caseform,
+                                                                         last_exposure=linked_case.last_exposure,
+                                                                         )
+
                             this_link.save()
+                            upgraded_case_cluster_link.save()
 
                 if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=11) or\
@@ -1232,7 +1256,7 @@ def followup(request, cttype, pid):
         # print("FORMS:")
         # print(symptomforms)
         tracelogforms = TraceLogFormSet(queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
-        new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log)
+        new_tracelogform = ContactTraceLogForm(user, instance=new_log, initial={'notes': log_initial})
         new_symptomforms = NewSymptomFormSet(prefix='sxlog',
                                              queryset=SxLog.objects.none())
         newtestforms = TestFormSet(prefix='new_test', queryset=test_query)
@@ -1796,8 +1820,8 @@ def edit_bulk_contacts(request, cttype, case_id, contact_list):
     # print(contact_query)
     ContactFormSet = modelformset_factory(Exposures, form=ContactBulkEditForm, extra=0)
 
-    print(contact_query)
-    print(exposure_query)
+    # print(contact_query)
+    # print(exposure_query)
 
     contactformhelper = ContactBulkEditFormHelper()
 
@@ -1811,6 +1835,7 @@ def edit_bulk_contacts(request, cttype, case_id, contact_list):
             for contactform in contactforms:
                 if contactform.is_valid():
                     contactform.save()
+                    messages.success(request, '%s linked to case C%s.' % (contactform.cleaned_data['name'], case_id))
 
             if 'save_and_exit' in request.POST:
                 # print('save_exit')

@@ -424,6 +424,9 @@ class NewPersonForm(forms.ModelForm):
     def clean_dob(self):
         data = self.cleaned_data['dob']
 
+        if data is None:
+            data = datetime(1900, 1, 1) #Set default birthday of 01 Jan 1900 for when birthday is left blank
+
         #     Date should only exist in the past
         if data >= datetime.date.today():
             # print('dob error')
@@ -435,6 +438,8 @@ class NewPersonForm(forms.ModelForm):
         data = self.cleaned_data['age']
         try:
             dob = self.cleaned_data['dob']
+            if dob == datetime(1900, 1, 1):
+                dob = None
         except KeyError:
             dob = None
 
@@ -499,8 +504,8 @@ class InvestigationCaseForm(forms.ModelForm):
     # release_date = forms.DateField(widget=DatePickerInput)
     last_follow = forms.DateField(required=False, widget=forms.HiddenInput)
     rel_pcp = forms.BooleanField(required=False)
-    text_follow_up = forms.BooleanField(required=False)
-    email_follow_up = forms.BooleanField(required=False)
+    # text_follow_up = forms.BooleanField(required=False)
+    # email_follow_up = forms.BooleanField(required=False)
 
     class Meta:
             model = Cases
@@ -544,11 +549,11 @@ class InvestigationCaseForm(forms.ModelForm):
                 Column('release_date', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
-            Row(
-                Column('text_follow_up', css_class='form-group col-md-4 mb-0'),
-                Column('email_follow_up', css_class='form-group col-md-4 mb-0'),
-                css_class='form-row'
-            ),
+            # Row(
+            #     Column('text_follow_up', css_class='form-group col-md-4 mb-0'),
+            #     Column('email_follow_up', css_class='form-group col-md-4 mb-0'),
+            #     css_class='form-row'
+            # ),
         )
 
     def clean_status(self):
@@ -587,8 +592,8 @@ class FollowUpCaseForm(forms.ModelForm):
     reqs_pcp = forms.CharField(required=False)
     probable = forms.BooleanField(required=False)
     old_case_no = forms.CharField(max_length=15, required=False)
-    text_follow_up = forms.BooleanField(required=False)
-    email_follow_up = forms.BooleanField(required=False)
+    # text_follow_up = forms.BooleanField(required=False)
+    # email_follow_up = forms.BooleanField(required=False)
 
     class Meta:
         model = Cases
@@ -628,11 +633,11 @@ class FollowUpCaseForm(forms.ModelForm):
                 Column('release_date', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
-            Row(
-                Column('text_follow_up', css_class='form-group col-md-4 mb-0'),
-                Column('email_follow_up', css_class='form-group col-md-4 mb-0'),
-                css_class='form-row'
-            ),
+            # Row(
+            #     Column('text_follow_up', css_class='form-group col-md-4 mb-0'),
+            #     Column('email_follow_up', css_class='form-group col-md-4 mb-0'),
+            #     css_class='form-row'
+            # ),
             Column('active', css_class='form-group col-md-4 mb-0'),
         )
 
@@ -1420,9 +1425,9 @@ class AddContactForm(forms.ModelForm):
 
 class FollowUpContactForm(forms.ModelForm):
 
-    init_exposure = forms.DateField(widget=DatePickerInput(), required=False)
-    last_exposure = forms.DateField(widget=DatePickerInput(), required=False)
-    tent_qt_end = forms.DateField(widget=DatePickerInput(), required=False)
+    # init_exposure = forms.DateField(widget=DatePickerInput(), required=False)
+    # last_exposure = forms.DateField(widget=DatePickerInput(), required=False)
+    # tent_qt_end = forms.DateField(widget=DatePickerInput(), required=False)
 
     can_qt_options = [('', 'Unknown'),
                       (0, 'Yes'),
@@ -1435,6 +1440,9 @@ class FollowUpContactForm(forms.ModelForm):
     class Meta:
         model = Contacts
         exclude = ['person',
+                   'init_exposure',
+                   'last_exposure',
+                   'tent_qt_end',
                    ]
 
     def __init__(self, *args, **kwargs):
@@ -1446,10 +1454,10 @@ class FollowUpContactForm(forms.ModelForm):
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
             Row(
-                Column('init_exposure', css_class='form-group col-md-4 mb-0'),
-                Column('last_exposure', css_class='form-group col-md-4 mb-0'),
-                Column('tent_qt_end', css_class='form-group col-md-4 mb-0'),
-                css_class='form-row'
+                # Column('init_exposure', css_class='form-group col-md-4 mb-0'),
+                # Column('last_exposure', css_class='form-group col-md-4 mb-0'),
+                # Column('tent_qt_end', css_class='form-group col-md-4 mb-0'),
+                # css_class='form-row'
             ),
             Row(
                 Column('old_contact_no', css_class='form-group col-md-3 mb-0'),

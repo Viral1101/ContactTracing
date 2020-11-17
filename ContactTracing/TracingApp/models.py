@@ -865,6 +865,7 @@ class Exposures(models.Model):
     location = models.ForeignKey(Locations, models.DO_NOTHING, null=True)
     outbreak = models.ForeignKey(Outbreaks, models.DO_NOTHING, null=True)
     exposing_case = models.ForeignKey(Cases, models.DO_NOTHING, null=True)
+    contact = models.ForeignKey(Contacts, models.DO_NOTHING, null=True)
 
     class Meta:
         managed = True

@@ -124,9 +124,13 @@
                         </div>
                     </div>
                 {% else %}
-                    <div class="card-body">
-                        <p class="card-text">No PCHD link.</p>
+                <div class="card">
+                    <div class="card-header" style="transform: rotate(0);">
+                            <h6 class="card-title">
+                                Linked to external case.
+                            </h6>
                     </div>
+                </div>
                 {% endif %}
             {% endfor %}
         {% else %}

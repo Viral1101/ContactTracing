@@ -7,7 +7,11 @@
       <h1 class="h2">{{ name }}</h1>
     </div>
 {% if cases %}
-    <div class="table-responsive">
+        <button class="btn btn-danger btn-lg" data-toggle="collapse" data-target="#openTable" aria-expanded="true" aria-controls="openTable">
+                Active
+        </button>
+
+    <div class="table-responsive collapse show" id="openTable">
       <table class="table table-striped table-sm table-hover">
         <thead>
           <tr>
@@ -23,6 +27,7 @@
         </thead>
         <tbody>
         {% for x in cases %}
+            {% if x.active %}
           <tr>
             <td style="transform: rotate(0);"><a class="stretched-link" href="/TracingApp/info/{{ type }}/{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}">{{ type }}{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}</a></td>
             <td>{% if type == 'C' %}{{ x.old_case_no }}{% elif type == 'CT' %}{{ x.old_contact_id }}{% endif %}</td>
@@ -39,10 +44,53 @@
                 {% endif %}
                 {% endfor %}</td>
           </tr>
+        {% endif %}
         {% endfor %}
         </tbody>
       </table>
     </div>
+        <button class="btn btn-secondary btn-lg" data-toggle="collapse" data-target="#closedTable" aria-expanded="false" aria-controls="closedTable">
+            Closed
+        </button>
+    <div class="table-responsive collapse" id="closedTable">
+      <table class="table table-striped table-sm table-hover">
+        <thead>
+          <tr>
+            <th>{% if type == 'C' %}Case ID{% else %}Contact ID{% endif %}</th>
+            <th>Old ID</th>
+            <th>Name</th>
+            <th>{% if type == 'C' %}DOB{% else %}DOB/Age{% endif %}</th>
+            <th>Status</th>
+            <th>Last Follow-up Date</th>
+            <th>Active</th>
+            <th>Assigned to</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for x in cases %}
+            {% if not x.active %}
+          <tr>
+            <td style="transform: rotate(0);"><a class="stretched-link" href="/TracingApp/info/{{ type }}/{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}">{{ type }}{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}</a></td>
+            <td>{% if type == 'C' %}{{ x.old_case_no }}{% elif type == 'CT' %}{{ x.old_contact_id }}{% endif %}</td>
+            <td>{{ x.person.first }} {{ x.person.last }}</td>
+            <td>{{ x.person.dob }}</td>
+            <td>{{ x.status.status }}</td>
+            <td>{{ x.last_follow }}</td>
+            <td>{% if x.active %}Open{% else %}Closed{% endif %}</td>
+            <td>{% for assign in assigns %}
+                {% if type == 'C' %}
+                    {% if assign.case_id == x.case_id and assign.status == 0 %}{{ assign.user }}{% endif %}
+                {% else %}
+                    {% if assign.contact_id == x.contact_id and assign.status == 0 %}{{ assign.user }}{% endif %}
+                {% endif %}
+                {% endfor %}</td>
+          </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+</div>
 {% else %}
 <h3>Something very bad has happened.</h3>
 <h4>The cases tables is empty. Contact the admin.</h4>
