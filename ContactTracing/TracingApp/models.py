@@ -353,6 +353,9 @@ class Emails(models.Model):
         # managed = False
         db_table = 'emails'
 
+    def __str__(self):
+        return "%s" % self.email_address
+
 
 class Employers(models.Model):
     employer_id = models.AutoField(primary_key=True)
@@ -427,6 +430,9 @@ class PersonEmailJoin(models.Model):
         # managed = False
         db_table = 'person_email_join'
 
+    def __str__(self):
+        return "%s: %s" % (self.person, self.email)
+
 
 class PersonEmployerJoin(models.Model):
     join_id = models.AutoField(primary_key=True)
@@ -449,6 +455,9 @@ class PersonPhoneJoin(models.Model):
         # managed = False
         db_table = 'person_phone_join'
 
+    def __str__(self):
+        return "%s: %s" % (self.person, self.phone)
+
 
 class Phones(models.Model):
     phone_id = models.AutoField(primary_key=True)
@@ -457,6 +466,9 @@ class Phones(models.Model):
     class Meta:
         # managed = False
         db_table = 'phones'
+
+    def __str__(self):
+        return "%s" % self.phone_number
 
 
 class Persons(models.Model):
@@ -509,6 +521,9 @@ class PersonAddressJoin(models.Model):
     class Meta:
         # managed = False
         db_table = 'person_address_join'
+
+    def __str__(self):
+        return "%s: %s" % (self.person, self.address)
 
 
 class Roles(models.Model):

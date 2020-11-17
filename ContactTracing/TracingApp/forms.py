@@ -425,7 +425,7 @@ class NewPersonForm(forms.ModelForm):
         data = self.cleaned_data['dob']
 
         if data is None:
-            data = datetime(1900, 1, 1) #Set default birthday of 01 Jan 1900 for when birthday is left blank
+            data = datetime.datetime(1900, 1, 1) #Set default birthday of 01 Jan 1900 for when birthday is left blank
 
         #     Date should only exist in the past
         if data >= datetime.date.today():
@@ -438,7 +438,7 @@ class NewPersonForm(forms.ModelForm):
         data = self.cleaned_data['age']
         try:
             dob = self.cleaned_data['dob']
-            if dob == datetime(1900, 1, 1):
+            if dob == datetime.datetime(1900, 1, 1):
                 dob = None
         except KeyError:
             dob = None

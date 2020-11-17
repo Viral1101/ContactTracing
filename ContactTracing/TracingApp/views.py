@@ -12,6 +12,8 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Q
+import csv
+import io
 
 # Create your views here.
 
@@ -822,7 +824,7 @@ def add_contact(request, cttype, pid):
 
             if usecaseemailform.cleaned_data['use_case_email']:
                 case_email = PersonEmailJoin.objects.filter(person=case.person).first().email
-                person_email, created2 = PersonEmailJoin.objects.get_or_create(person=this_person, phone=case_email)
+                person_email, created2 = PersonEmailJoin.objects.get_or_create(person=this_person, email=case_email)
                 person_email.save()
 
             for emailform in emailforms:
@@ -1850,3 +1852,125 @@ def edit_bulk_contacts(request, cttype, case_id, contact_list):
     return render(request, 'contacts/bulk-edit-contacts.html', {'contactforms': contactforms,
                                                               'contactformhelper': contactformhelper,
                                                               })
+
+
+def case_import(request):
+
+    template = "import/import_cases.html"
+    data = Cases.objects.all()
+
+    prompt = {
+        'order': 'Order of the CSV should be first, mi, last, suffix, sex, age, dob, email, address,    phone, profile',
+        'cases': data
+    }
+
+    if request.method == "GET":
+        return render(request, template, prompt)
+    csv_file = request.FILES['file']
+
+    if not csv_file.name.endswith('.csv'):
+        messages.error(request, 'THIS IS NOT A CSV FILE')
+    # data_set = csv.reader(csv_file)
+    # data_set = csv.DictReader(csv_file, delimiter=',')
+    data_set = csv_file.read().decode('UTF-8')
+    # setup a stream which is when we loop through each line we are able to handle a data in a stream
+    print("Pre next")
+    io_string = io.StringIO(data_set)
+    next(io_string)
+    print("Post next")
+    print(io_string)
+    # for line in data_set:
+    #     print(line)
+    for line in csv.reader(io_string, delimiter=',', quotechar="|"):
+        print(line)
+        dob = datetime.datetime(1900, 1, 1)
+        for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+            try:
+                dob = datetime.datetime.strptime(line[5], fmt)
+            except ValueError:
+                pass
+
+        new_person, created = Persons.objects.update_or_create(
+            first=line[0],
+            mi=line[1],
+            last=line[2],
+            suffix=line[3],
+            sex=line[4],
+            dob=dob,
+            # age=column[6],
+        )
+
+        if created:
+
+            sample_date = None
+            result_date = None
+            rcvd_date = None
+            for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+                try:
+                    sample_date = datetime.datetime.strptime(line[14], fmt)
+                except ValueError:
+                    pass
+            for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+                try:
+                    result_date = datetime.datetime.strptime(line[15], fmt)
+                except ValueError:
+                    pass
+            for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+                try:
+                    rcvd_date = datetime.datetime.strptime(line[16], fmt)
+                except ValueError:
+                    pass
+            if sample_date is None:
+                raise ValueError('Sample Date: No valid date format found')
+            if result_date is None:
+                raise ValueError('Sample Date: No valid date format found')
+            if rcvd_date is None:
+                raise ValueError('Sample Date: No valid date format found')
+
+            new_test = Tests(sample_date=sample_date,
+                             result_date=result_date,
+                             rcvd_date=rcvd_date,
+                             test_type=TestTypes.objects.get(test_type_id=line[18]),
+                             logged_date=datetime.date.today(),
+                             user=AuthUser.objects.get(id=request.user.id),
+                             result=TestResults.objects.get(result_id=line[17]),
+                             source=TestSources.objects.get(id=line[19]),
+                             )
+            new_test.save()
+            print(new_test)
+
+            new_address = Addresses(street=line[7],
+                                    street2=line[8],
+                                    city=line[9],
+                                    state=line[10],
+                                    post_code=line[11])
+            new_address.save()
+            address_join = PersonAddressJoin(person=new_person,
+                                             address=new_address)
+            address_join.save()
+
+            new_phone = Phones(phone_number=line[12])
+            new_phone.save()
+            phone_join = PersonPhoneJoin(person=new_person,
+                                         phone=new_phone)
+            phone_join.save()
+
+            new_email = Emails(email_address=line[13])
+            new_email.save()
+            email_join = PersonEmailJoin(person=new_person,
+                                         email=new_email)
+            email_join.save()
+
+            new_case = Cases(person=new_person,
+                             active=True,
+                             status=Statuses.objects.get(status_id=1)
+                             )
+            new_case.save()
+
+            case_test_join = CaseTestJoin(case=new_case,
+                                          test=new_test)
+            case_test_join.save()
+
+    context = {}
+
+    return render(request, template, context)
