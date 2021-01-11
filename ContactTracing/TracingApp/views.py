@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from .models import *
 from django.contrib.auth.decorators import login_required
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from .forms import CaseForm
 from django.views.generic.edit import FormView
 from django.utils.decorators import method_decorator
@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Q
+from .matches import *
 import csv
 import io
 
@@ -45,7 +46,7 @@ def assigns(request):
 def cases(request):
     cs_cases = Cases.objects.all()
     # phones = PersonPhoneJoin.objects.all()
-    today = datetime.date.today()
+    today = date.today()
     # symptoms = CaseSxJoin.objects.all()
     # cs_sx_logs = SxLogJoin.objects.all()
     # logs = CaseLogJoin.objects.all()
@@ -166,17 +167,17 @@ def info(request, cttype, pid):
     phones = PersonPhoneJoin.objects.filter(person_id=person_id)
     # print(phones)
     emails = PersonEmailJoin.objects.filter(person_id=person_id)
-    today = datetime.date.today()
+    today = date.today()
     qt_release = None
     tent_rel_calc = None
 
-    followup_day = datetime.date.today() - timedelta(days=7)
+    followup_day = date.today() - timedelta(days=7)
 
     addresses = PersonAddressJoin.objects.filter(person_id=person_id)
 
     if symptoms is not None:
         # print("This should be none for this test")
-        first_sx = datetime.date.today()
+        first_sx = date.today()
         for symptom in symptoms:
             if symptom.start is not None:
                 first_sx = min(first_sx, symptom.start)
@@ -206,7 +207,7 @@ def info(request, cttype, pid):
         elif 'drop_assignment' in request.POST:
             dropped_status = AssignmentStatus.objects.get(status_id=3)
             assigned.status = dropped_status
-            assigned.date_done = datetime.date.today()
+            assigned.date_done = date.today()
             assigned.save()
             return redirect('assignments')
         else:
@@ -324,7 +325,7 @@ def new_case(request):
     assignment = Assignments()
     test = Tests()
     user = AuthUser.objects.get(id=request.user.id)
-    # test.logged_date = datetime.date.today()
+    # test.logged_date = date.today()
     # print(test.logged_date)
 
     pending_status = AssignmentStatus.objects.get(status_id=1)
@@ -338,9 +339,9 @@ def new_case(request):
         assignform = NewAssignment(request.POST, instance=assignment, initial={'status': AssignmentStatus.objects.get(status_id=1),
                                                                                'assign_type': 1})
 
-        # today = datetime.date.today()
+        # today = date.today()
         testform = NewTest(request.POST, instance=test)
-        # testform.logged_date = datetime.date.today()
+        # testform.logged_date = date.today()
 
         assignform_valid = assignform.is_valid()
         testform_valid = testform.is_valid()
@@ -383,34 +384,49 @@ def new_case(request):
             personaddress = PersonAddressJoin(person=new_person, address=new_address)
             personphone = PersonPhoneJoin(person=new_person, phone=new_phone)
 
-            personaddress.save()
-            personphone.save()
             # print("saved personphone")
 
             needs_invest_status = Statuses.objects.get(status_id=1)
-            newcase = Cases(person=new_person, active=True, status=needs_invest_status)
-            newcase.save()
-            # print("made newcase")
+            newcase, case_created = Cases.objects.get_or_create(person=new_person, active=True, status=needs_invest_status)
+            if case_created:
 
-            assigned_user = assignform.cleaned_data['user']
-            if assigned_user is not None and assigned_user != AuthUser.objects.get(id=1):
+                personaddress.save()
+                personphone.save()
 
-                newassign = Assignments(case=newcase,
-                                        assign_type=assignform.cleaned_data['assign_type'],
-                                        status=pending_status,
-                                        user=assignform.cleaned_data['user'])
-                # print("made newassign")
+                newcase.save()
+                # print("made newcase")
 
-                # new_person.save()
-                # new_test.save()
-                newassign.save()
-            # assignform.save()
+                assigned_user = assignform.cleaned_data['user']
+                if assigned_user is not None and assigned_user != AuthUser.objects.get(id=1):
 
-            case_test = CaseTestJoin(case=newcase, test=test)
-            case_test.save()
+                    newassign = Assignments(case=newcase,
+                                            assign_type=assignform.cleaned_data['assign_type'],
+                                            status=pending_status,
+                                            user=assignform.cleaned_data['user'])
+                    # print("made newassign")
 
-            messages.success(request, 'Case C%s created for %s %s' % (newcase.case_id, new_person.first, new_person.last))
-            return redirect('assignments')
+                    # new_person.save()
+                    # new_test.save()
+                    newassign.save()
+                # assignform.save()
+
+                case_test = CaseTestJoin(case=newcase, test=test)
+                case_test.save()
+
+                messages.success(request, 'Case C%s created for %s %s' % (newcase.case_id, new_person.first, new_person.last))
+                return redirect('assignments')
+            else:
+                messages.error(request,
+                               'Case for %s %s failed to be created. Ensure you have entered data appropriately.' % (new_person.first, new_person.last))
+                new_test.delete()
+                new_person.delete()
+
+                return render(request, 'add-new-case.html', {'personform': personform,
+                                                             'addressform': addressform,
+                                                             'phoneform': phoneform,
+                                                             'assignform': assignform,
+                                                             'testform': testform,
+                                                             })
 
     else:
         personform = NewPersonForm(instance=person)
@@ -507,7 +523,7 @@ def case_investigation(request, cttype, pid):
             symptomlogform.user = user
 
         # logform.user = user
-            # symptomlogform.rec_date = datetime.date.today()
+            # symptomlogform.rec_date = date.today()
 
         # print("Case: %s | Person: %s | Address: %s | Phone: %s | Email: %s | Test: %s | Log: %s | Sx: %s" %
         #       (caseform.is_valid(),
@@ -583,6 +599,20 @@ def case_investigation(request, cttype, pid):
                         pass
             # print("symptom done")
 
+            if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=11) or \
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or \
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or \
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14) or\
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or\
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=16):
+
+                # print("Secondary, by status:")
+                # print(caseform.cleaned_data['status'])
+                this_case.active = False
+            else:
+                this_case.active = True
+
             # this_test.save()
             this_person.save()
             this_case.save()
@@ -597,7 +627,7 @@ def case_investigation(request, cttype, pid):
                             # print("form is valid")
                             this_test = testform.save(commit=False)
                             this_test.user = user
-                            this_test.logged_date = datetime.date.today()
+                            this_test.logged_date = date.today()
                             this_test.save()
                             case_test, case_test_ctd = CaseTestJoin.objects.get_or_create(case=this_case, test=this_test)
                             if case_test_ctd:
@@ -610,7 +640,7 @@ def case_investigation(request, cttype, pid):
             if this_assignment is not None:
                 done_status = AssignmentStatus.objects.get(status_id=2)
                 this_assignment.status = done_status
-                this_assignment.date_done = datetime.date.today()
+                this_assignment.date_done = date.today()
                 this_assignment.save()
 
             if 'save_and_exit' in request.POST:
@@ -756,7 +786,7 @@ def add_contact(request, cttype, pid):
             # print(contactform.cleaned_data)
 
             if contactform.cleaned_data['mark_as_contacted']:
-                contactform.cleaned_data['last_follow'] = datetime.date.today()
+                contactform.cleaned_data['last_follow'] = date.today()
 
             # print(contactform.cleaned_data)
             this_contact = contactform.save(commit=False)
@@ -779,7 +809,12 @@ def add_contact(request, cttype, pid):
             # relation = relationform.cleaned_data['relation_to_case']
             for exposureform in exposureforms:
                 if exposureform.is_valid():
-                    if not exposureform.cleaned_data['DELETE']:
+                    try:
+                        if not exposureform.cleaned_data['DELETE']:
+                            exposure = exposureform.save()
+                            contact_exposure = ContactExposureJoin(contact=this_contact, exposure=exposure)
+                            contact_exposure.save()
+                    except KeyError:
                         exposure = exposureform.save()
                         contact_exposure = ContactExposureJoin(contact=this_contact, exposure=exposure)
                         contact_exposure.save()
@@ -933,6 +968,7 @@ def followup(request, cttype, pid):
         user = AuthUser.objects.get(id=request.user.id)
         this_assignment, a_created = Assignments.objects.get_or_create(case=case, user=user, status=pending)
         exposures = None
+        upgraded_case = None
     elif cttype == 'CT':
         case = get_object_or_404(Contacts, contact_id=pid)
         symptom_query = ContactSxJoin.objects.filter(case_id=case)
@@ -942,6 +978,7 @@ def followup(request, cttype, pid):
         user = AuthUser.objects.get(id=request.user.id)
         this_assignment, a_created = Assignments.objects.get_or_create(contact=case, user=user, status=pending)
         exposures = ContactExposureJoin.objects.filter(contact=case).values('exposure')
+        upgraded_case = case.upgraded_case
     else:
         return Http404("Invalid type.")
 
@@ -1016,7 +1053,7 @@ def followup(request, cttype, pid):
         if cttype == 'CT':
             contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.filter(exposure_id__in=exposures), prefix='exposure')
         else:
-            contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.none() , prefix='exposure')
+            contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.none(), prefix='exposure')
 
         # print(test)
         # print(len(test))
@@ -1056,12 +1093,24 @@ def followup(request, cttype, pid):
             else:
                 this_person = person
 
+            if cttype == 'CT':
+                for contactexposureform in contactexposureforms:
+                    print(contactexposureform)
+                    if contactexposureform.is_valid():
+                        this_exposure = contactexposureform.save()
+                        contact_exposure_link, ce_created = ContactExposureJoin.objects.update_or_create(contact=case,
+                                                                                                         exposure=this_exposure)
+                        if ce_created:
+                            contact_exposure_link.save()
+
             for addressform in addressforms:
-                if addressform.is_valid():
-                    this_address = addressform.save()
-                    person_address, created = PersonAddressJoin.objects.update_or_create(person=this_person, address=this_address)
-                    if created:
-                        person_address.save()
+                if addressform.has_changed():
+                    if addressform.is_valid():
+                        this_address = addressform.save()
+                        person_address, created = PersonAddressJoin.objects.update_or_create(person=this_person,
+                                                                                             address=this_address)
+                        if created:
+                            person_address.save()
 
             for phoneform in phoneforms:
                 if phoneform.is_valid():
@@ -1086,18 +1135,21 @@ def followup(request, cttype, pid):
                     contact_log = ContactLogJoin(contact=case, log=this_log)
                     contact_log.save()
 
+            this_test = None
+
             for newtestform in newtestforms:
-                if newtestform.is_valid():
-                    this_test = newtestform.save(commit=False)
-                    this_test.user = user
-                    this_test.logged_date = datetime.date.today()
-                    this_test.save()
-                    if cttype == 'C':
-                        test_link = CaseTestJoin(case=case, test=this_test)
-                        test_link.save()
-                    elif cttype == 'CT':
-                        test_link = ContactTestJoin(contact=case, test=this_test)
-                        test_link.save()
+                if newtestform.has_changed():
+                    if newtestform.is_valid():
+                        this_test = newtestform.save(commit=False)
+                        this_test.user = user
+                        this_test.logged_date = date.today()
+                        this_test.save()
+                        if cttype == 'C':
+                            test_link = CaseTestJoin(case=case, test=this_test)
+                            test_link.save()
+                        elif cttype == 'CT':
+                            test_link = ContactTestJoin(contact=case, test=this_test)
+                            test_link.save()
 
             for new_symptomform in new_symptomforms:
                 if new_symptomform.is_valid():
@@ -1124,86 +1176,107 @@ def followup(request, cttype, pid):
             # caseform['active'].initial, caseform.cleaned_data['active']))
 
             this_caseform = caseform.save(commit=False)
+            this_caseform.upgraded_case = upgraded_case
 
             if caseform.has_changed():
                 # print("It's changed")
-                if cttype == 'CT':
+                if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=9) or \
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=10):
                     # print("It's a contact")
                     # print(caseform.cleaned_data['status'])
-                    if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=9) or \
-                            caseform.cleaned_data['status'] == Statuses.objects.get(status_id=10):
-                        # print("Caseform changed and marked as case")
-                        this_caseform.active = False
-                        # print("Just set to inactive, is it?")
-                        # print(this_caseform.active)
+                    if cttype == 'CT':
+                        # print("UPGRADE? %s" % upgraded_case)
+                        if upgraded_case is None:
+                            # print("Caseform changed and marked as case")
+                            this_caseform.active = False
+                            # print("Just set to inactive, is it?")
+                            # print(this_caseform.active)
 
-                        # print(caseform.cleaned_data['active'])
-                        this_status = caseform.cleaned_data['status']
-                        today = datetime.date.today()
+                            # print(caseform.cleaned_data['active'])
+                            this_status = caseform.cleaned_data['status']
+                            today = date.today()
 
-                        upgraded_case = Cases(person=this_person,
-                                              status=this_status,
-                                              last_follow=today,
-                                              active=1,
-                                              )
+                            upgraded_case = Cases(person=this_person,
+                                                  status=this_status,
+                                                  last_follow=today,
+                                                  active=1,
+                                                  )
 
-                        if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=9):
-                            upgraded_case.probable = True
+                            if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=9):
+                                upgraded_case.probable = True
 
-                        upgraded_case.save()
+                            upgraded_case.save()
+                            this_caseform.upgraded_case = upgraded_case
+                            # print("UPGRADED YET? %s" % this_caseform.upgraded_case)
 
-                        all_symptoms = ContactSxJoin.objects.filter(case_id=pid).values('sx_id')
-                        for symptom in all_symptoms:
-                            # current_symptom = SxLog.objects.get(log_id=symptom)
-                            case_sx = CaseSxJoin(case=upgraded_case, sx_id=symptom['sx_id'])
-                            case_sx.save()
+                            old_tests = ContactTestJoin.objects.filter(contact=case)
 
-                        note_data = {'contact': pid,
-                                     'date': today,
-                                     'case': upgraded_case.case_id,
-                                     'status': this_status,
-                                     }
-                        note = 'Contact CT{contact} has been {status}. New ID is C{case}.'.format(**note_data)
-                        upgrade_log = TraceLogs(notes=note, user=user, log_date=today)
-                        this_new_log = upgrade_log.save()
-                        contact_log2 = ContactLogJoin(contact=case, log=upgrade_log)
-                        contact_log2.save()
+                            for old_test in old_tests:
+                                transfer_test = CaseTestJoin(case=upgraded_case,
+                                                             test=old_test.test)
+                                transfer_test.save()
 
-                        all_logs = ContactLogJoin.objects.filter(contact_id=pid).values('log_id')
-                        for log in all_logs:
-                            new_case_log = CaseLogJoin(case=upgraded_case, log_id=log['log_id'])
-                            new_case_log.save()
+                            if this_test is not None:
+                                upgraded_case_test_link = CaseTestJoin(case=upgraded_case,
+                                                                       test=this_test)
+                                upgraded_case_test_link.save()
 
-                        linked_exposures = ContactExposureJoin.objects.filter(contact=case).values("exposure_id")
-                        print("Linked exposures: %s" % linked_exposures)
-                        linked_cases = Exposures.objects.filter(exposure_id__in=linked_exposures)
-                        print("Linked cases: %s" % linked_cases)
+                            all_symptoms = ContactSxJoin.objects.filter(case_id=pid).values('sx_id')
+                            for symptom in all_symptoms:
+                                # current_symptom = SxLog.objects.get(log_id=symptom)
+                                case_sx = CaseSxJoin(case=upgraded_case, sx_id=symptom['sx_id'])
+                                case_sx.save()
 
-                        for linked_case in linked_cases:
+                            note_data = {'contact': pid,
+                                         'date': today,
+                                         'case': upgraded_case.case_id,
+                                         'status': this_status,
+                                         }
+                            note = 'Contact CT{contact} has been {status}. New ID is C{case}.'.format(**note_data)
+                            upgrade_log = TraceLogs(notes=note, user=user, log_date=today)
+                            this_new_log = upgrade_log.save()
+                            contact_log2 = ContactLogJoin(contact=case, log=upgrade_log)
+                            contact_log2.save()
 
-                            new_cluster = Clusters()
-                            new_cluster.save()
-                            print("Linked case: %s" % linked_case.exposing_case)
+                            all_logs = ContactLogJoin.objects.filter(contact_id=pid).values('log_id')
+                            for log in all_logs:
+                                new_case_log = CaseLogJoin(case=upgraded_case, log_id=log['log_id'])
+                                new_case_log.save()
 
-                            this_link = ClusterCaseJoin(cluster=new_cluster,
-                                                        index_case=linked_case.exposing_case,
-                                                        case=linked_case.exposing_case,
-                                                        )
-                            upgraded_case_cluster_link = ClusterCaseJoin(cluster=new_cluster,
-                                                                         case=upgraded_case,
-                                                                         index_case=linked_case.exposing_case,
-                                                                         associated_contact=this_caseform,
-                                                                         last_exposure=linked_case.last_exposure,
-                                                                         )
+                            linked_exposures = ContactExposureJoin.objects.filter(contact=case).values("exposure_id")
+                            print("Linked exposures: %s" % linked_exposures)
+                            linked_cases = Exposures.objects.filter(exposure_id__in=linked_exposures)
+                            print("Linked cases: %s" % linked_cases)
 
-                            this_link.save()
-                            upgraded_case_cluster_link.save()
+                            for linked_case in linked_cases:
 
-                if caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
+                                if linked_case.exposing_case:
+
+                                    new_cluster = Clusters()
+                                    new_cluster.save()
+                                    print("Linked case: %s" % linked_case.exposing_case)
+
+                                    this_link = ClusterCaseJoin(cluster=new_cluster,
+                                                                index_case=linked_case.exposing_case,
+                                                                case=linked_case.exposing_case,
+                                                                )
+                                    upgraded_case_cluster_link = ClusterCaseJoin(cluster=new_cluster,
+                                                                                 case=upgraded_case,
+                                                                                 index_case=linked_case.exposing_case,
+                                                                                 associated_contact=this_caseform,
+                                                                                 last_exposed=linked_case.last_exposure,
+                                                                                 )
+
+                                    this_link.save()
+                                    upgraded_case_cluster_link.save()
+
+                elif caseform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=11) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or\
-                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14):
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14) or\
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or\
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=16):
 
                     # print("Secondary, by status:")
                     # print(caseform.cleaned_data['status'])
@@ -1214,8 +1287,8 @@ def followup(request, cttype, pid):
                         # print("Case upgraded")
 
             # print('Active: %s' % caseform.cleaned_data['active'])
-            this_caseform.last_follow = datetime.date.today()
-            # caseform.cleaned_data['last_follow'] = datetime.date.today()
+            this_caseform.last_follow = date.today()
+            # caseform.cleaned_data['last_follow'] = date.today()
             # print("Before caseform is saved, inactive?")
             # print(this_caseform.active)
             this_caseform.save()
@@ -1225,7 +1298,7 @@ def followup(request, cttype, pid):
             if a_created:
                 this_assignment.assign_type = 4
             this_assignment.status = done_status
-            this_assignment.date_done = datetime.date.today()
+            this_assignment.date_done = date.today()
             this_assignment.save()
 
             if 'save_and_exit' in request.POST:
@@ -1854,19 +1927,24 @@ def edit_bulk_contacts(request, cttype, case_id, contact_list):
                                                               })
 
 
+@login_required(login_url='/accounts/login/')
 def case_import(request):
+    from django.utils.datastructures import MultiValueDictKeyError
 
     template = "import/import_cases.html"
-    data = Cases.objects.all()
-
-    prompt = {
-        'order': 'Order of the CSV should be first, mi, last, suffix, sex, age, dob, email, address,    phone, profile',
-        'cases': data
-    }
+    # data = Cases.objects.all()
 
     if request.method == "GET":
-        return render(request, template, prompt)
-    csv_file = request.FILES['file']
+        return render(request, template)
+
+    try:
+        csv_file = request.FILES['file']
+    except MultiValueDictKeyError:
+        messages.error(request, 'No file selected.')
+        return render(request, template)
+    csv_file2 = csv_file
+
+    # fuzzy_match(csv_file2)
 
     if not csv_file.name.endswith('.csv'):
         messages.error(request, 'THIS IS NOT A CSV FILE')
@@ -1881,12 +1959,15 @@ def case_import(request):
     print(io_string)
     # for line in data_set:
     #     print(line)
+
+    cases_added = []
+
     for line in csv.reader(io_string, delimiter=',', quotechar="|"):
         print(line)
-        dob = datetime.datetime(1900, 1, 1)
+        dob = datetime.strptime("1-1-1900", '%d-%m-%Y')
         for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
             try:
-                dob = datetime.datetime.strptime(line[5], fmt)
+                dob = datetime.strptime(line[5], fmt)
             except ValueError:
                 pass
 
@@ -1907,31 +1988,40 @@ def case_import(request):
             rcvd_date = None
             for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
                 try:
-                    sample_date = datetime.datetime.strptime(line[14], fmt)
+                    sample_date = line[14]
+                    sample_date = datetime.strptime(sample_date.strip(), fmt)
                 except ValueError:
                     pass
             for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
                 try:
-                    result_date = datetime.datetime.strptime(line[15], fmt)
+                    result_date = line[15]
+                    result_date = datetime.strptime(result_date.strip(), fmt)
                 except ValueError:
                     pass
             for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
                 try:
-                    rcvd_date = datetime.datetime.strptime(line[16], fmt)
+                    rcvd_date = line[16]
+                    rcvd_date = datetime.strptime(rcvd_date.strip(), fmt)
                 except ValueError:
                     pass
             if sample_date is None:
-                raise ValueError('Sample Date: No valid date format found')
+                new_person.delete()
+                messages.error(request, 'Sample Date invalid. Enter a valid date.')
+                return render(request, template)
             if result_date is None:
-                raise ValueError('Sample Date: No valid date format found')
+                new_person.delete()
+                messages.error(request, 'Result Date invalid. Enter a valid date.')
+                return render(request, template)
             if rcvd_date is None:
-                raise ValueError('Sample Date: No valid date format found')
+                new_person.delete()
+                messages.error(request, 'Received Date invalid. Enter a valid date.')
+                return render(request, template)
 
             new_test = Tests(sample_date=sample_date,
                              result_date=result_date,
                              rcvd_date=rcvd_date,
                              test_type=TestTypes.objects.get(test_type_id=line[18]),
-                             logged_date=datetime.date.today(),
+                             logged_date=date.today(),
                              user=AuthUser.objects.get(id=request.user.id),
                              result=TestResults.objects.get(result_id=line[17]),
                              source=TestSources.objects.get(id=line[19]),
@@ -1961,16 +2051,89 @@ def case_import(request):
                                          email=new_email)
             email_join.save()
 
-            new_case = Cases(person=new_person,
-                             active=True,
-                             status=Statuses.objects.get(status_id=1)
-                             )
-            new_case.save()
+            new_case, case_created = Cases.objects.update_or_create(
+                person=new_person,
+                active=True,
+                status=Statuses.objects.get(status_id=1)
+            )
 
-            case_test_join = CaseTestJoin(case=new_case,
-                                          test=new_test)
-            case_test_join.save()
+            if case_created:
+                case_test_join = CaseTestJoin(case=new_case,
+                                              test=new_test)
+                case_test_join.save()
+                cases_added.append(new_case.case_id)
+            else:
+                messages.error(request, "Failed to create case for %s %s. Check the file entry and try again." % (new_person.first, new_person.last))
+                email_join.delete()
+                new_email.delete()
+                phone_join.delete()
+                new_phone.delete()
+                address_join.delete()
+                new_address.delete()
+                new_person.delete()
+                new_test.delete()
+        else:
+            messages.error(request, "%s %s already exists in the database." % (new_person.first, new_person.last))
 
     context = {}
 
-    return render(request, template, context)
+    if len(cases_added) > 0:
+        return redirect("case-upload-assign", case_list=cases_added)
+    else:
+        return render(request, template, context)
+
+
+@login_required(login_url='/accounts/login/')
+def case_upload_assign(request, case_list):
+
+    cases = case_list[1:(len(case_list) - 1)]
+    cases = cases.replace(" ", "")
+    cases = cases.split(",")
+
+    cases = Cases.objects.filter(case_id__in=cases)
+    CaseAssignmentFormsest = formset_factory(AssignUploadedCaseForm, extra=len(cases))
+
+    assignment = Assignments()
+
+    users = AuthUser.objects.filter(id__gt=0)
+
+    pending_status = AssignmentStatus.objects.get(status_id=1)
+
+    if request.method == 'POST':
+        # print('POST')
+
+        caseassignments = CaseAssignmentFormsest(request.POST, prefix='case')
+
+        assignform = NewAssignment(request.POST, instance=assignment)
+
+        if caseassignments.is_valid() and assignform.is_valid():
+            i = 0
+            j = 0
+            for caseassign in caseassignments:
+                # print('in for')
+                if caseassign.is_valid():
+                    # print('valid form')
+                    # print(caseassign.cleaned_data)
+                    if caseassign.cleaned_data['assign_box']:
+                        # print('checked box')
+                        user_assigned = caseassign.cleaned_data['assign_box']
+                        if user_assigned is not None and user_assigned != AuthUser.objects.get(id=1):
+                            this_assign = Assignments(user=user_assigned,
+                                                      case=cases[i],
+                                                      status=pending_status,
+                                                      assign_type=AssignmentType.objects.get(assign_type_id=1))
+                            this_assign.save()
+                i = i + 1
+
+            return redirect('assignments')
+        # print(caseassignments.errors)
+
+    else:
+
+        caseassignments = CaseAssignmentFormsest(prefix='case')
+
+    return render(request, 'bulk-assign/multiple-assign.html', {'assigncases': zip(caseassignments, cases),
+                                                                # 'assignform': assignform,
+                                                                'assignformset': caseassignments,
+                                                                })
+

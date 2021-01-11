@@ -30,7 +30,7 @@
             {% if x.active %}
           <tr>
             <td style="transform: rotate(0);"><a class="stretched-link" href="/TracingApp/info/{{ type }}/{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}">{{ type }}{% if type == 'C' %}{{ x.case_id }}{% else %}{{x.contact_id}}{% endif %}</a></td>
-            <td>{% if type == 'C' %}{{ x.old_case_no }}{% elif type == 'CT' %}{{ x.old_contact_id }}{% endif %}</td>
+            <td>{% if type == 'C' %}{{ x.old_case_no }}{% elif type == 'CT' %}{{ x.old_contact_no }}{% endif %}</td>
             <td>{{ x.person.first }} {{ x.person.last }}</td>
             <td>{{ x.person.dob }}</td>
             <td>{{ x.status.status }}</td>

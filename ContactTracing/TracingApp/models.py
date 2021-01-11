@@ -218,6 +218,7 @@ class Cases(models.Model):
     able_to_isolate = models.ForeignKey('BooleanTable', models.DO_NOTHING, blank=True, null=True)
     text_follow_up = models.BooleanField(blank=True, null=True)
     email_follow_up = models.BooleanField(blank=True, null=True)
+    monitor_not_case = models.BooleanField(default=False)
 
     class Meta:
         managed = True
@@ -288,6 +289,7 @@ class Contacts(models.Model):
     able_to_quarantine = models.ForeignKey(BooleanTable, models.DO_NOTHING, blank=True, null=True)
     text_follow_up = models.BooleanField(blank=True, null=True)
     email_follow_up = models.BooleanField(blank=True, null=True)
+    upgraded_case = models.ForeignKey(Cases, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
         managed = True
@@ -895,3 +897,16 @@ class ContactExposureJoin(models.Model):
     class Meta:
         managed = True
         db_table = 'contact_exposure_join'
+
+
+class EpitraxPCHDCaseJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey(Persons, models.DO_NOTHING)
+    case = models.ForeignKey(Cases, models.DO_NOTHING, null=True)
+    contact = models.ForeignKey(Contacts, models.DO_NOTHING, null=True)
+    epi_person_id = models.BigIntegerField()
+    cmr = models.BigIntegerField(null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'epitrax_pchd_case_join'

@@ -18,7 +18,7 @@
         <td>{{ exposure.exposure.quarantine_end }}</td>
         <td>{% if exposure.exposure.exposing_case %}
             <a href="/TracingApp/info/C/{{ exposure.exposure.exposing_case.case_id }}">
-                C{{ exposure.exposure.exposing_case }}
+                {{ exposure.exposure.exposing_case }}
             </a>
             {% else %}
             No PCHD case

@@ -89,7 +89,7 @@
         {% for x in contacts %}
           <tr>
             <td style="transform: rotate(0);"><a class="stretched-link" href="/TracingApp/info/CT/{{ x.contact_id }}">CT{{ x.contact_id }}</a></td>
-            <td>{{ x.old_contact_id }}</td>
+            <td>{{ x.old_contact_no }}</td>
             <td>{{ x.person.first }} {{ x.person.last }}</td>
             <td>{{ y.street }}</td>
             <td>{{ x.person.dob }} / {{ x.person.age }}</td>

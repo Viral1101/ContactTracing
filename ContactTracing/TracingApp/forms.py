@@ -492,7 +492,7 @@ class NewPersonForm(forms.ModelForm):
 
 
 class InvestigationCaseForm(forms.ModelForm):
-    active = forms.BooleanField(required=False)
+    active = forms.BooleanField(widget=forms.HiddenInput, required=False)
     confirmed = forms.BooleanField(required=False)
     old_case_no = forms.CharField(max_length=15, required=False)
     # last_follow = forms.DateField(widget=DatePickerInput())
@@ -523,6 +523,7 @@ class InvestigationCaseForm(forms.ModelForm):
         self.fields['reqs_pcp'].label = 'PCP requirements for release'
         self.fields['confirmed'].label = 'Positive Test Confirmation'
         self.fields['old_case_no'].label = 'Old ID'
+        self.fields['monitor_not_case'].label = 'Not a case - Monitor'
         self.fields['last_follow'].disabled = True
         # self.fields['tent_release'].label = 'Tentative Release Date'
         self.form_method = 'post'
@@ -540,6 +541,7 @@ class InvestigationCaseForm(forms.ModelForm):
                 Column('old_case_no', css_class='form-group col-md-4 mb-0'),
                 Column('confirmed', css_class='form-group col-md-2 mb-0'),
                 Column('probable', css_class='form-group col-md-2 mb-0'),
+                Column('monitor_not_case', css_class='form-group col-md-2 mb-0'),
                 Column('active', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
             ),
@@ -591,6 +593,7 @@ class FollowUpCaseForm(forms.ModelForm):
     tent_release = forms.DateField(widget=DatePickerInput())
     reqs_pcp = forms.CharField(required=False)
     probable = forms.BooleanField(required=False)
+    monitor_not_case = forms.BooleanField(required=False)
     old_case_no = forms.CharField(max_length=15, required=False)
     # text_follow_up = forms.BooleanField(required=False)
     # email_follow_up = forms.BooleanField(required=False)
@@ -610,6 +613,7 @@ class FollowUpCaseForm(forms.ModelForm):
         self.fields['iso_pcp'].label = 'Isolation Order by PCP'
         self.fields['reqs_pcp'].label = 'PCP requirements for release'
         self.fields['confirmed'].label = 'Positive Test Confirmation'
+        self.fields['monitor_not_case'].label = 'Not a Case - Monitor'
         self.fields['old_case_no'].label = 'Old ID'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
@@ -625,6 +629,7 @@ class FollowUpCaseForm(forms.ModelForm):
                 Column('old_case_no', css_class='form-group col-md-4 mb-0'),
                 Column('confirmed', css_class='form-group col-md-2 mb-0'),
                 Column('probable', css_class='form-group col-md-2 mb-0'),
+                Column('monitor_not_case', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
             ),
             Row(
@@ -1367,6 +1372,7 @@ class AddContactForm(forms.ModelForm):
     mark_as_contacted = forms.BooleanField(required=False)
     copy_case_notes = forms.BooleanField(required=False)
     old_contact_no = forms.CharField(max_length=15, required=False)
+    status = forms.ModelChoiceField(queryset=Statuses.objects.all().exclude(status_id__in=[1, 3]))
 
     class Meta:
         model = Contacts
@@ -1436,6 +1442,7 @@ class FollowUpContactForm(forms.ModelForm):
     can_quarantine = forms.TypedChoiceField(choices=can_qt_options, required=False, coerce=int)
     active = forms.BooleanField(widget=forms.HiddenInput(), required=False)
     old_contact_no = forms.CharField(max_length=15, required=False)
+    upgraded_case = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
         model = Contacts
@@ -1468,10 +1475,21 @@ class FollowUpContactForm(forms.ModelForm):
             ),
         )
 
-    # def clean_last_follow(self):
-    #     # data = self.cleaned_data['last_follow']
-    #     data = datetime.date.today()
-    #     return data
+    def clean_upgraded_case(self):
+        data = self.cleaned_data['upgraded_case']
+
+        print("DATA: %s" % data)
+        if data == '':
+            data = None
+
+        try:
+            get_case = Cases.objects.get(case_id=data)
+            print(get_case)
+        except Cases.DoesNotExist:
+            get_case = None
+            print("None case")
+
+        return get_case
 
     # def clean_can_quarantine(self):
     #     data = self.cleaned_data['can_quarantine']
@@ -1721,6 +1739,17 @@ class AddContactEmailFormHelper(FormHelper):
 
 class AssignCaseForm(forms.Form):
     assign_box = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.form_tag = False
+        self.disable_csrf = True
+        self.empty_permitted = False
+
+
+class AssignUploadedCaseForm(forms.Form):
+    assign_box = forms.ModelChoiceField(queryset=AuthUser.objects.filter(id__gt=1), required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

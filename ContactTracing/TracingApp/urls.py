@@ -27,5 +27,7 @@ urlpatterns = [
     path('search/', views.search_results, name='search_results'),
     url(r'^jsi18n/$', django_views.i18n.JavaScriptCatalog.as_view(), name='jsi18n'),
     url(r'^password/$', views.change_password, name='change_password'),
-    path('upload-csv', views.case_import, name="case-import")
+    path('upload-csv', views.case_import, name="case-import"),
+    path('case-upload-assign/<str:case_list>/', views.case_upload_assign, name='case-upload-assign'),
+    # path('case-upload-template', views.download_file, name='case-upload-a=template'),
 ]
