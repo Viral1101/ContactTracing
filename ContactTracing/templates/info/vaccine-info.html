@@ -1,0 +1,18 @@
+{% if case.person %}
+<table class="table">
+    <thead class="thead-light">
+        <tr>
+            <th>Dose 1 Type</th>
+            <th>Dose 1 Date</th>
+            <th>Dose 2 Type</th>
+            <th>Dose 2 Date</th>
+        </tr>
+    </thead>
+    <tr>
+        <td>{{ case.person.vacc_type1 }}</td>
+        <td>{{ case.person.vacc_dose1 }}</td>
+        <td>{{ case.person.vacc_type2 }}</td>
+        <td>{{ case.person.vacc_dose2 }}</td>
+    </tr>
+</table>
+{% endif %}

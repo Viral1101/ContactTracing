@@ -489,6 +489,10 @@ class Persons(models.Model):
     contact_pref = models.ForeignKey(ContactPrefs, models.DO_NOTHING, blank=True, null=True)
     needs_docs = models.IntegerField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
+    vacc_dose1 = models.DateField(blank=True, null=True)
+    vacc_dose2 = models.DateField(blank=True, null=True)
+    vacc_type1 = models.ForeignKey('VaccineTypes', models.DO_NOTHING, blank=True, null=True, related_name='type1')
+    vacc_type2 = models.ForeignKey('VaccineTypes', models.DO_NOTHING, blank=True, null=True, related_name='type2')
 
     class Meta:
         # managed = False
@@ -512,6 +516,19 @@ class Persons(models.Model):
                 'sex': sex}
         output = '[{first} {mi}{last}{suffix}] DOB: {dob}, Age: {age}, Sex: {sex}'.format(**data)
         return output
+
+
+class VaccineTypes(models.Model):
+    vaccine_id = models.AutoField(primary_key=True)
+    detail = models.TextField()
+
+    class Meta:
+        managed = True
+        db_table = 'vaccine_types'
+        ordering = ('detail',)
+
+    def __str__(self):
+        return self.detail
 
 
 class PersonAddressJoin(models.Model):

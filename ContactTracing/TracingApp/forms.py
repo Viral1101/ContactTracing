@@ -368,14 +368,23 @@ class PersonForm(forms.ModelForm):
     sex = forms.TypedChoiceField(choices=sexes, coerce=str)
     dob = forms.DateField(widget=DatePickerInput(), required=False)
     contact_pref = forms.ModelChoiceField(queryset=ContactPrefs.objects.all(), required=False)
+    vacc_dose1 = forms.DateField(widget=DatePickerInput(), required=False)
+    vacc_dose2 = forms.DateField(widget=DatePickerInput(), required=False)
+    vacc_type1 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
+    vacc_type2 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form_method = 'post'
+        self.fields['vacc_dose1'].label = 'Dose 1'
+        self.fields['vacc_dose2'].label = 'Dose 2'
+        self.fields['vacc_type1'].label = 'Dose 1 type'
+        self.fields['vacc_type2'].label = 'Dose 2 type'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
+            HTML("<h4>Person Information</h4>"),
             Row(
                 Column('first', css_class='form-group col-md-4 mb-0'),
                 Column('mi', css_class='form-group col-md-2 mb-0'),
@@ -388,6 +397,14 @@ class PersonForm(forms.ModelForm):
                 Column('dob', css_class='form-group col-md-4 mb-0'),
                 Column('age', css_class='form-group col-md-2 mb-0'),
                 Column('contact_pref', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            HTML("<h4>COVID Vaccine Info</h4>"),
+            Row(
+                Column('vacc_type1', css_class='form-group col-md-2 mb-0'),
+                Column('vacc_dose1', css_class='form-group col-md-4 mb-0'),
+                Column('vacc_type2', css_class='form-group col-md-2 mb-0'),
+                Column('vacc_dose2', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
         )
@@ -420,6 +437,10 @@ class NewPersonForm(forms.ModelForm):
     sex = forms.TypedChoiceField(choices=sexes, coerce=str)
     dob = forms.DateField(widget=DatePickerInput(), required=False)
     contact_pref = forms.ModelChoiceField(queryset=ContactPrefs.objects.all(), required=False)
+    vacc_dose1 = forms.DateField(widget=DatePickerInput(), required=False)
+    vacc_dose2 = forms.DateField(widget=DatePickerInput(), required=False)
+    vacc_type1 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
+    vacc_type2 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
 
     def clean_dob(self):
         data = self.cleaned_data['dob']
@@ -488,6 +509,10 @@ class NewPersonForm(forms.ModelForm):
                   'dob',
                   'age',
                   'contact_pref',
+                  'vacc_dose1',
+                  'vacc_dose2',
+                  'vacc_type1',
+                  'vacc_type2',
                   ]
 
 
@@ -879,6 +904,10 @@ class OldTraceLogFormHelper(FormHelper):
 class PersonFormSetHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['vacc_dose1'].label = 'Dose 1'
+        self.fields['vacc_dose2'].label = 'Dose 2'
+        self.fields['vacc_type1'].label = 'Dose 1 type'
+        self.fields['vacc_type2'].label = 'Dose 2 type'
         self.form_method = 'post'
         self.form_tag = False
         self.disable_csrf = True
@@ -895,6 +924,13 @@ class PersonFormSetHelper(FormHelper):
                 Column('dob', css_class='form-group col-md-4 mb-0'),
                 Column('age', css_class='form-group col-md-2 mb-0'),
                 Column('contact_pref', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('vacc_type1', css_class='form-group col-md-2 mb-0'),
+                Column('vacc_dose1', css_class='form-group col-md-4 mb-0'),
+                Column('vacc_type2', css_class='form-group col-md-2 mb-0'),
+                Column('vacc_dose2', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
         )

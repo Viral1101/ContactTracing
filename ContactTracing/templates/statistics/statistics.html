@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}Statistics{% endblock %}
+
+{% block content2 %}
+
+{% autoescape off %}
+{{ rcvd_chart }}
+{% endautoescape %}
+
+{% endblock %}

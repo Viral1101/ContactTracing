@@ -15,6 +15,9 @@ from django.db.models import Q
 from .matches import *
 import csv
 import io
+import numpy as num
+import pandas as pd
+from .charts import *
 
 # Create your views here.
 
@@ -104,6 +107,7 @@ def info(request, cttype, pid):
         upstream_cases = ClusterCaseJoin.objects.filter(case=data).exclude(index_case=data)
         downstream_cases = ClusterCaseJoin.objects.filter(index_case=data).exclude(case=data)
         assigned = Assignments.objects.filter(case_id=pid, status=pending).first()
+        cmrs = EpitraxPCHDCaseJoin.objects.filter(case_id=pid)
         exposures = None
         # clusters = ClusterCaseJoin.objects.filter(case_id=pid)
     elif cttype == "CT":
@@ -136,6 +140,7 @@ def info(request, cttype, pid):
         upstream_cases = None
         downstream_cases = None
         assigned = Assignments.objects.filter(contact_id=pid, status=pending).first()
+        cmrs = EpitraxPCHDCaseJoin.objects.filter(contact_id=pid)
         # clusters = None
     else:
         raise Http404("Invalid case type")
@@ -248,6 +253,7 @@ def info(request, cttype, pid):
                                                       'assigned': assigned,
                                                       'assigned_to_this_user': assigned_to_this_user,
                                                       'exposures': exposures,
+                                                      'cmrs': cmrs,
                                                       })
 
 
@@ -812,10 +818,18 @@ def add_contact(request, cttype, pid):
                     try:
                         if not exposureform.cleaned_data['DELETE']:
                             exposure = exposureform.save()
+                            if exposure.exposing_case is None and pid != 0:
+                                exposure.relation_to_case = 'Unknown'
+                                exposure.exposing_case = case
+                                exposure.save()
                             contact_exposure = ContactExposureJoin(contact=this_contact, exposure=exposure)
                             contact_exposure.save()
                     except KeyError:
                         exposure = exposureform.save()
+                        if exposure.exposing_case is None and pid != 0:
+                            exposure.relation_to_case = 'Unknown'
+                            exposure.exposing_case = case
+                            exposure.save()
                         contact_exposure = ContactExposureJoin(contact=this_contact, exposure=exposure)
                         contact_exposure.save()
 
@@ -881,6 +895,103 @@ def add_contact(request, cttype, pid):
                     except KeyError:
                         #     No Symptoms to record
                         pass
+
+            if contactform.cleaned_data['status'] == Statuses.objects.get(status_id=9) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=10):
+
+                # print("Caseform changed and marked as case")
+                this_contact.active = False
+                # print("Just set to inactive, is it?")
+                # print(this_caseform.active)
+
+                # print(caseform.cleaned_data['active'])
+                this_status = contactform.cleaned_data['status']
+                today = date.today()
+
+                upgraded_case = Cases(person=this_person,
+                                      status=this_status,
+                                      last_follow=today,
+                                      active=1,
+                                      )
+
+                if contactform.cleaned_data['status'] == Statuses.objects.get(status_id=9):
+                    upgraded_case.probable = True
+
+                upgraded_case.save()
+                this_contact.upgraded_case = upgraded_case
+                this_contact.save()
+                # print("UPGRADED YET? %s" % this_caseform.upgraded_case)
+
+                old_tests = ContactTestJoin.objects.filter(contact=this_contact)
+
+                for old_test in old_tests:
+                    transfer_test = CaseTestJoin(case=upgraded_case,
+                                                 test=old_test.test)
+                    transfer_test.save()
+
+                all_symptoms = ContactSxJoin.objects.filter(case=this_contact).values('sx_id')
+                for symptom in all_symptoms:
+                    # current_symptom = SxLog.objects.get(log_id=symptom)
+                    case_sx = CaseSxJoin(case=upgraded_case, sx_id=symptom['sx_id'])
+                    case_sx.save()
+
+                note_data = {'contact': this_contact.contact_id,
+                             'date': today,
+                             'case': upgraded_case.case_id,
+                             'status': this_status,
+                             }
+                note = 'Contact CT{contact} has been {status}. New ID is C{case}.'.format(**note_data)
+                upgrade_log = TraceLogs(notes=note, user=user, log_date=today)
+                this_new_log = upgrade_log.save()
+                contact_log2 = ContactLogJoin(contact=this_contact, log=upgrade_log)
+                contact_log2.save()
+
+                all_logs = ContactLogJoin.objects.filter(contact=this_contact).values('log_id')
+                for log in all_logs:
+                    new_case_log = CaseLogJoin(case=upgraded_case, log_id=log['log_id'])
+                    new_case_log.save()
+
+                linked_exposures = ContactExposureJoin.objects.filter(contact=this_contact).values("exposure_id")
+                # print("Linked exposures: %s" % linked_exposures)
+                linked_cases = Exposures.objects.filter(exposure_id__in=linked_exposures)
+                # print("Linked cases: %s" % linked_cases)
+
+                for linked_case in linked_cases:
+
+                    if linked_case.exposing_case:
+                        new_cluster = Clusters()
+                        new_cluster.save()
+                        print("Linked case: %s" % linked_case.exposing_case)
+
+                        this_link = ClusterCaseJoin(cluster=new_cluster,
+                                                    index_case=linked_case.exposing_case,
+                                                    case=linked_case.exposing_case,
+                                                    )
+                        upgraded_case_cluster_link = ClusterCaseJoin(cluster=new_cluster,
+                                                                     case=upgraded_case,
+                                                                     index_case=linked_case.exposing_case,
+                                                                     associated_contact=this_contact,
+                                                                     last_exposed=linked_case.last_exposure,
+                                                                     )
+
+                        this_link.save()
+                        upgraded_case_cluster_link.save()
+
+            elif contactform.cleaned_data['status'] == Statuses.objects.get(status_id=5) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=11) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=14) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=16):
+
+                # print("Secondary, by status:")
+                # print(caseform.cleaned_data['status'])
+                this_contact.active = False
+                this_contact.save()
+            else:
+                this_contact.active = True
+                this_contact.save()
 
             if pid != 0:
                 messages.success(request, "Contact CT%s:%s %s added to Case C%s." % (this_contact.contact_id,
@@ -2137,3 +2248,22 @@ def case_upload_assign(request, case_list):
                                                                 'assignformset': caseassignments,
                                                                 })
 
+
+@login_required(login_url='/accounts/login/')
+def statistics_dashboard(request):
+
+    # Get all objects that have a valid status
+    qs = Cases.objects.filter(status_id__lte=13)
+    print(len(qs))
+
+    # Only select PCR tests with positive results that aren't self reported
+    molecular_pos_tests = Tests.objects.filter(test_type_id=1, result_id=1, source_id__in=range(1, 3))
+    print("Positive, official, PCR tests: %s" % len(molecular_pos_tests))
+
+    # Select the cases that are associated with the positive tests
+    cases_with_mol_pos = CaseTestJoin.objects.filter(test_id__in=molecular_pos_tests.values('test_id'))
+    print("Cases associated with these tests: %s" % len(cases_with_mol_pos))
+
+    rcvd_chart = prep_rcvd_data(qs, molecular_pos_tests, cases_with_mol_pos)
+
+    return render(request, 'statistics/statistics.html', {'rcvd_chart': rcvd_chart,})

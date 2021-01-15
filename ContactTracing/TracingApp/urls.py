@@ -29,5 +29,6 @@ urlpatterns = [
     url(r'^password/$', views.change_password, name='change_password'),
     path('upload-csv', views.case_import, name="case-import"),
     path('case-upload-assign/<str:case_list>/', views.case_upload_assign, name='case-upload-assign'),
+    path('statistics', views.statistics_dashboard, name='statistics'),
     # path('case-upload-template', views.download_file, name='case-upload-a=template'),
 ]

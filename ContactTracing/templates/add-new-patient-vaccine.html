@@ -1,0 +1,37 @@
+<div class="form-row">
+            <div class="">
+                <div class="card flex-row">
+                    <div class="card-header col-md-2">
+                        <div class="row align-items-center">
+                            <h5 class="card-title">COVID Vaccine Information</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-10">
+<!--                        <div class="card">-->
+                            <div class="card-body align-items-center">
+                                {{ personform.management_form }}
+                                {{ personform.errors }}
+                                {{ personform.media }}
+                                <div class="row">
+                                    <div class="input-group col-sm-2">
+                                        <label for='{{ personform.vacc_type1 }}' class="">Dose 1 Type</label>
+                                        {{ personform.vacc_type1 }}
+                                    </div>
+                                    <div class="input-group col-sm-4">
+                                        <label for='{{ personform.vacc_dose1 }}' class="">Dose 1 Date</label>
+                                        {{ personform.vacc_dose1 }}
+                                    </div>
+                                    <div class="input-group col-sm-2">
+                                        <label for='{{ personform.vacc_type2 }}' class="">Dose 2 Type</label>
+                                        {{ personform.vacc_type2 }}
+                                    </div>
+                                    <div class="input-group col-sm-4">
+                                        <label for='{{ personform.vacc_dose2 }}' class="">Dose 2 Date</label>
+                                        {{ personform.vacc_dose2 }}
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
