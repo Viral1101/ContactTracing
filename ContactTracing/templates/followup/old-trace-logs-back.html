@@ -1,0 +1,27 @@
+{% if tracelogforms %}
+{{ tracelogforms.management_form }}
+<table class="table table-striped table-hover">
+    {% for tracelog in tracelogforms %}
+    <tr>
+        <td><b>Logged: </b>{{ tracelog.user }} {{tracelog.log_date.value}}</td>
+    </tr>
+    <tr data-toggle="collapse" data-target="#edits_{{ tracelog.log_id.value }}" onclick="">
+        <td>{{ tracelog.notes.value }} {% if request.user.id == tracelog.user.value %}<a href='/follow-up/{{ type }}/{{ pid }}/edit/log/{{ tracelog.log_id.value }}'>Edit</a>{% endif %}</td>
+    </tr>
+    {% if tracelogedits %}
+    <tr id="#edits_{{ tracelog.log_id.value }}" class="collapse">
+        {% for logedit in tracelogedits %}
+            {% if logedit.log_id == tracelog.log_id.value %}
+
+                <td><i>{{ logedit.previous_text }}</i></td>
+                <td><i>{{ logedit.edit_reason }}</i></td>
+                <td><i>{{ logedit.user }} {{ logedit.edit_date }}</i></td>
+            {% else %}
+                {{logedit.log_id}} != {{tracelog.log_id.value}}
+            {% endif %}
+        {% endfor %}
+    </tr>
+    {% endif %}
+    {% endfor %}
+</table>
+{% endif %}

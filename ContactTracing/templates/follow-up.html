@@ -9,12 +9,16 @@
     {% csrf_token %}
 
 {% crispy personform %}
+<h4>Address</h4>
 {% crispy addressforms addressformhelper %}
 <input type="button" name="add_address" value="Add Address" class="btn btn-info" id="button-id-add_address">
+<h4>Phone</h4>
 {% crispy phoneforms phoneformhelper %}
 <input type="button" name="add_phone" value="Add Phone" class="btn btn-info" id="button-id-add_phone">
+<h4>Email</h4>
 {% crispy emailforms emailformhelper %}
 <input type="button" name="add_email" value="Add Email" class="btn btn-info" id="button-id-add_email">
+<h4>Testing Info</h4>
 {% crispy newtestforms testformhelper %}
 <input type="button" name="add_test" value="Add Test" class="btn btn-info" id="button-id-add_test">
 
@@ -24,6 +28,7 @@
 {% crispy exposureforms exposureformhelper %}
 <input type="button" name="add_exposure" value="Add Exposure" class="btn btn-info" id="button-id-add_exposure">
 {% endif %}
+<h4>Symptom Data</h4>
 {% include 'followup/old-symptom-logs.html' %}
 {% crispy new_symptomforms symptomloghelper %}
 <input type="button" name="add_symptom" value="Add Symptom" class="btn btn-info" id="button-id-add_symptom">
@@ -53,9 +58,11 @@
 <div id="empty_email" style="display:none">
     {% crispy emailforms.empty_form emailformhelper %}
 </div>
+{% if type == 'CT' %}
 <div id="empty_exposure" style="display:none">
     {% crispy exposureforms.empty_form exposureformhelper %}
 </div>
+{% endif %}
 <div id="empty_symptom" style="display:none">
     {% crispy new_symptomforms.empty_form symptomloghelper %}
 </div>

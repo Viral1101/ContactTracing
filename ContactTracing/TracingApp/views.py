@@ -1,23 +1,17 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, HttpResponseRedirect, Http404
-from .models import *
+from django.http import Http404
 from django.contrib.auth.decorators import login_required
 from datetime import date, timedelta
-from .forms import CaseForm
-from django.views.generic.edit import FormView
-from django.utils.decorators import method_decorator
 from django.forms import inlineformset_factory, modelformset_factory, formset_factory
 from .forms import *
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Q
-from .matches import *
+from .charts import charts
 import csv
 import io
-import numpy as num
-import pandas as pd
-from .charts import *
+
 
 # Create your views here.
 
@@ -87,6 +81,11 @@ def contacts(request):
 
 @login_required(login_url='/accounts/login/')
 def info(request, cttype, pid):
+
+    if request.user.groups.filter(name='admin_user').exists():
+        edit_allowed = True
+    else:
+        edit_allowed = False
 
     pending = AssignmentStatus.objects.get(status_id=1)
 
@@ -161,6 +160,8 @@ def info(request, cttype, pid):
         sx_logs = None
     # print(sx_ids)
 
+    trace_log_edits = LogEdits.objects.filter(log_id__in=logs.values('log_id')).order_by('edit_id')
+
     testforms = Tests.objects.filter(test_id__in=testquery.values('test_id'))
 
     ct_symptoms_details = SxLogJoin.objects.filter(sx_id__in=ct_symptoms.values('sx_id'))
@@ -201,13 +202,20 @@ def info(request, cttype, pid):
         if 'assign_to_me' in request.POST:
             pending_status = AssignmentStatus.objects.get(status_id=1)
             # print('save_exit')
+
             if cttype == 'C':
+                existing_assign = Assignments.objects.filter(case_id=pid, status=pending_status).exists()
                 this_assign = Assignments(user=user, case_id=pid, status=pending_status)
             elif cttype == 'CT':
+                existing_assign = Assignments.objects.filter(contact_id=pid, status=pending_status).exists()
                 this_assign = Assignments(user=user, contact_id=pid, status=pending_status)
             else:
+                existing_assign = Assignments.objects.filter(outbreak_id=pid, status=pending_status).exists()
                 this_assign = Assignments(user=user, outbreak_id=pid, status=pending_status)
-            this_assign.save()
+            if existing_assign:
+                messages.info(request, 'Case has been assigned to another user.')
+            else:
+                this_assign.save()
             return redirect('info', cttype=cttype, pid=pid)
         elif 'drop_assignment' in request.POST:
             dropped_status = AssignmentStatus.objects.get(status_id=3)
@@ -254,6 +262,9 @@ def info(request, cttype, pid):
                                                       'assigned_to_this_user': assigned_to_this_user,
                                                       'exposures': exposures,
                                                       'cmrs': cmrs,
+                                                      'tracelogedits': trace_log_edits,
+                                                      'edit_allowed': edit_allowed,
+                                                      'pid': pid,
                                                       })
 
 
@@ -415,6 +426,18 @@ def new_case(request):
                     # new_test.save()
                     newassign.save()
                 # assignform.save()
+
+                if new_test.result_id == 1:
+                    if new_test.test_type_id == 1 & new_test.source_id <= 2:
+                        newcase.confirmed = True
+                        newcase.probable = False
+                        newcase.monitor_not_case = False
+                        newcase.save()
+                    else:
+                        newcase.confirmed = False
+                        newcase.probable = True
+                        newcase.monitor_not_case = False
+                        newcase.save()
 
                 case_test = CaseTestJoin(case=newcase, test=test)
                 case_test.save()
@@ -610,12 +633,16 @@ def case_investigation(request, cttype, pid):
                     caseform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or \
                     caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or \
                     caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14) or\
-                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or\
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or \
+                    caseform.cleaned_data['status'] == Statuses.objects.get(status_id=17) or \
                     caseform.cleaned_data['status'] == Statuses.objects.get(status_id=16):
 
                 # print("Secondary, by status:")
                 # print(caseform.cleaned_data['status'])
                 this_case.active = False
+            elif caseform.cleaned_data['status'] == Statuses.objects.get(status_id=4):
+                this_case.hospitalized = True
+                this_case.active = True
             else:
                 this_case.active = True
 
@@ -634,6 +661,8 @@ def case_investigation(request, cttype, pid):
                             this_test = testform.save(commit=False)
                             this_test.user = user
                             this_test.logged_date = date.today()
+                            # if this_test.result == TestResults.get(result_id=1):
+                            #     if this_test.test_type == TestTypes.get
                             this_test.save()
                             case_test, case_test_ctd = CaseTestJoin.objects.get_or_create(case=this_case, test=this_test)
                             if case_test_ctd:
@@ -674,7 +703,7 @@ def case_investigation(request, cttype, pid):
         caseform = InvestigationCaseForm(instance=case)
         logform = NewTraceLogForm(user, instance=log, initial={'notes': log_initial})
 
-        symptomforms = SymptomFormSet(queryset=Symptoms.objects.none())
+        symptomforms = SymptomFormSet(queryset=Symptoms.objects.none(), prefix='symptom')
         symptomlogforms = SymptomLogFormSet(queryset=symptom_query, prefix='sxlog')
 
     return render(request, 'case edit/case-investigation.html', {'caseform': caseform,
@@ -983,6 +1012,7 @@ def add_contact(request, cttype, pid):
                     contactform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or \
                     contactform.cleaned_data['status'] == Statuses.objects.get(status_id=14) or \
                     contactform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or \
+                    contactform.cleaned_data['status'] == Statuses.objects.get(status_id=17) or \
                     contactform.cleaned_data['status'] == Statuses.objects.get(status_id=16):
 
                 # print("Secondary, by status:")
@@ -1063,17 +1093,23 @@ def followup(request, cttype, pid):
 
     pending = AssignmentStatus.objects.get(status_id=1)
 
+    if request.user.groups.filter(name='admin_user').exists():
+        edit_allowed = True
+    else:
+        edit_allowed = False
+
     storage = messages.get_messages(request)
     log_initial = []
     for message in storage:
         log_initial.append("<<Link created>> %s" % message)
-    log_initial = str(log_initial).strip('[]').replace("'","")
+    log_initial = str(log_initial).strip('[]').replace("'", "")
     # print(log_initial)
 
     if cttype == 'C':
         case = get_object_or_404(Cases, case_id=pid)
         symptom_query = CaseSxJoin.objects.filter(case_id=case)
         trace_log_query = CaseLogJoin.objects.filter(case_id=case)
+        # trace_log_edits = LogEdits.objects.filter(log_id__in=trace_log_query.values('log_id'))
         test = case.test_id
         test_query = CaseTestJoin.objects.filter(case_id=case)
         user = AuthUser.objects.get(id=request.user.id)
@@ -1084,6 +1120,7 @@ def followup(request, cttype, pid):
         case = get_object_or_404(Contacts, contact_id=pid)
         symptom_query = ContactSxJoin.objects.filter(case_id=case)
         trace_log_query = ContactLogJoin.objects.filter(contact_id=case)
+        # trace_log_edits = LogEdits.objects.filter(log_id__in=trace_log_query.values('log_id'))
         test = 0
         test_query = ContactTestJoin.objects.filter(contact_id=case)
         user = AuthUser.objects.get(id=request.user.id)
@@ -1093,6 +1130,7 @@ def followup(request, cttype, pid):
     else:
         return Http404("Invalid type.")
 
+    trace_log_edits = LogEdits.objects.filter(log_id__in=trace_log_query.values('log_id'))
     person = Persons.objects.get(person_id=case.person_id)
     test_query = Tests.objects.filter(test_id__in=test_query.values('test_id'))
     if len(test_query) > 0:
@@ -1142,6 +1180,19 @@ def followup(request, cttype, pid):
     testformhelper = NewTestFormHelper()
     contactexposureformhelper = ContactExposureFormSetHelper()
 
+    if symptom_query.count() == 0:
+        symptomforms = None
+    else:
+        symptomforms = SymptomFormSet(prefix='oldsx',
+                                      queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by(
+                                          'symptom'))
+
+    if trace_log_query.count() == 0:
+        tracelogforms = None
+    else:
+        tracelogforms = TraceLogFormSet(prefix='oldlogs',
+                                        queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
+
     if request.method == 'POST':
         if cttype == 'C':
             caseform = FollowUpCaseForm(request.POST, instance=case)
@@ -1155,8 +1206,16 @@ def followup(request, cttype, pid):
         addressforms = AddressFormSet(request.POST, queryset=Addresses.objects.filter(address_id__in=address_query), prefix='address')
         phoneforms = PhoneFormSet(request.POST, queryset=Phones.objects.filter(phone_id__in=phone_query), prefix='phone')
         emailforms = EmailFormSet(request.POST, queryset=Emails.objects.filter(email_id__in=email_query), prefix='email')
-        symptomforms = SymptomFormSet(request.POST, queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
-        tracelogforms = TraceLogFormSet(request.POST, queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
+
+        # if symptom_query.count() == 0:
+        #     symptomforms = None
+        # else:
+        #     symptomforms = SymptomFormSet(request.POST, prefix='oldsx', queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
+        #
+        # if trace_log_query.count() == 0:
+        #     tracelogforms = None
+        # else:
+        #     tracelogforms = TraceLogFormSet(request.POST, prefix='oldlogs', queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
         new_tracelogform = ContactTraceLogForm(user, request.POST, instance=new_log, initial={'notes': log_initial})
         new_symptomforms = NewSymptomFormSet(request.POST, prefix='sxlog',
                                              queryset=SxLog.objects.none())
@@ -1164,8 +1223,8 @@ def followup(request, cttype, pid):
         if cttype == 'CT':
             contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.filter(exposure_id__in=exposures), prefix='exposure')
         else:
-            contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.none(), prefix='exposure')
-
+            # contactexposureforms = ContactExposureFormSet(request.POST, queryset=Exposures.objects.none(), prefix='exposure')
+            contactexposureforms = None
         # print(test)
         # print(len(test))
 
@@ -1386,12 +1445,16 @@ def followup(request, cttype, pid):
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=12) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=13) or\
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=14) or\
-                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or\
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=15) or \
+                        caseform.cleaned_data['status'] == Statuses.objects.get(status_id=17) or \
                         caseform.cleaned_data['status'] == Statuses.objects.get(status_id=16):
 
                     # print("Secondary, by status:")
                     # print(caseform.cleaned_data['status'])
                     this_caseform.active = False
+                elif caseform.cleaned_data['status'] == Statuses.objects.get(status_id=4):
+                    this_caseform.hospitalized = True
+                    this_caseform.active = True
                 else:
                     this_caseform.active = True
 
@@ -1425,6 +1488,16 @@ def followup(request, cttype, pid):
             else:
                 return redirect('assignments')
 
+        else:
+            print(f'CaseForm: {caseform.errors}')
+            print(f'PersonForm: {personform.errors}')
+            print(f'EmailForm: {emailforms.errors}')
+            print(f'AddressForm: {addressforms.errors}')
+            print(f'NewTestForm: {newtestforms.errors}')
+            print(f'PhoneForm: {phoneforms.errors}')
+            print(f'NewTraceLog: {new_tracelogform.errors}')
+            print(f'NewSymptomForm: {new_symptomforms.errors}')
+
     else:
         if cttype == 'C':
             caseform = FollowUpCaseForm(instance=case)
@@ -1437,11 +1510,17 @@ def followup(request, cttype, pid):
         addressforms = AddressFormSet(queryset=Addresses.objects.filter(address_id__in=address_query), prefix='address')
         phoneforms = PhoneFormSet(queryset=Phones.objects.filter(phone_id__in=phone_query), prefix='phone')
         emailforms = EmailFormSet(queryset=Emails.objects.filter(email_id__in=email_query), prefix='email')
-        symptomforms = SymptomFormSet(queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
-        # print(symptom_query)
-        # print("FORMS:")
-        # print(symptomforms)
-        tracelogforms = TraceLogFormSet(queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
+        # if symptom_query.count() == 0:
+        #     symptomforms = None
+        # else:
+        #     symptomforms = SymptomFormSet(prefix='oldsx', queryset=SxLog.objects.filter(log_id__in=symptom_query.values('sx_id')).order_by('symptom'))
+        # # print(symptom_query)
+        # # print("FORMS:")
+        # # print(symptomforms)
+        # if trace_log_query.count() == 0:
+        #     tracelogforms = None
+        # else:
+        #     tracelogforms = TraceLogFormSet(prefix='oldlogs', queryset=TraceLogs.objects.filter(log_id__in=trace_log_query.values('log')))
         new_tracelogform = ContactTraceLogForm(user, instance=new_log, initial={'notes': log_initial})
         new_symptomforms = NewSymptomFormSet(prefix='sxlog',
                                              queryset=SxLog.objects.none())
@@ -1450,12 +1529,15 @@ def followup(request, cttype, pid):
             contactexposureforms = ContactExposureFormSet(queryset=Exposures.objects.filter(exposure_id__in=exposures),
                                                           prefix='exposure')
         else:
-            contactexposureforms = ContactExposureFormSet(queryset=Exposures.objects.none(),
-                                                          prefix='exposure')
+            # contactexposureforms = ContactExposureFormSet(queryset=Exposures.objects.none(),
+            #                                               prefix='exposure')
+            contactexposureforms = None
 
         # print(test_query)
         # A contact shouldn't have a test
         testforms = Tests.objects.none()
+
+        print(f'Trace edits: {trace_log_edits.values("previous_text")}')
 
     return render(request, 'follow-up.html', {'caseform': caseform,
                                               'personform': personform,
@@ -1477,6 +1559,9 @@ def followup(request, cttype, pid):
                                               'testformhelper': testformhelper,
                                               'exposureforms': contactexposureforms,
                                               'exposureformhelper': contactexposureformhelper,
+                                              'pid': pid,
+                                              'tracelogedits': trace_log_edits,
+                                              'edit_allowed': edit_allowed,
                                               })
 
 
@@ -2072,13 +2157,124 @@ def case_import(request):
     #     print(line)
 
     cases_added = []
+    row = 0
+    date_check = True
+
+    for line in csv.reader(io_string, delimiter=',', quotechar="|"):
+        row = row + 1
+        print(line)
+        # dob = datetime.datetime.strptime("1-1-1900", '%d-%m-%Y')
+        dob = line[5]
+        sample_date = line[14]
+        result_date = line[15]
+        rcvd_date = line[16]
+        dob_pass = False
+        sample_pass = False
+        result_pass = False
+        rcvd_pass = False
+        for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+            try:
+                if dob == '':
+                    dob = datetime.datetime.strptime("1-1-1900", '%d-%m-%Y')
+                else:
+                    dob = datetime.datetime.strptime(dob.strip(), fmt)
+                dob_pass = True
+            except ValueError:
+                pass
+            except AttributeError:
+                pass
+            try:
+                if sample_date == '' or sample_date is None:
+                    sample_date = None
+                else:
+                    sample_date = datetime.datetime.strptime(sample_date.strip(), fmt)
+                sample_pass = True
+            except ValueError:
+                pass
+            except AttributeError:
+                pass
+            try:
+                if result_date == '' or result_date is None:
+                    result_date = None
+                else:
+                    result_date = datetime.datetime.strptime(result_date.strip(), fmt)
+                result_pass = True
+            except ValueError:
+                pass
+            except AttributeError:
+                pass
+            try:
+                if rcvd_date == '' or rcvd_date is None:
+                    rcvd_date = None
+                else:
+                    rcvd_date = datetime.datetime.strptime(rcvd_date.strip(), fmt)
+                rcvd_pass = True
+            except ValueError:
+                pass
+            except AttributeError:
+                pass
+
+        if not (dob_pass and sample_pass and result_pass and rcvd_pass):
+            if not dob_pass:
+                messages.error(request, 'Check date format for [DOB] in row %s' % row)
+            if not sample_pass:
+                messages.error(request, 'Check date format for [Sample] in row %s' % row)
+            if not result_pass:
+                messages.error(request, 'Check date format for [Result] in row %s' % row)
+            if not rcvd_pass:
+                messages.error(request, 'Check date format for [RCVD] in row %s' % row)
+            date_check = False
+
+    if not date_check:
+        return render(request, template)
+    else:
+        io_string.seek(0)
+        next(io_string)
 
     for line in csv.reader(io_string, delimiter=',', quotechar="|"):
         print(line)
-        dob = datetime.strptime("1-1-1900", '%d-%m-%Y')
+        dob = line[5]
+        sample_date = line[14]
+        result_date = line[15]
+        rcvd_date = line[16]
+
         for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
             try:
-                dob = datetime.strptime(line[5], fmt)
+                if dob == '':
+                    dob = datetime.datetime.strptime("1-1-1900", '%d-%m-%Y')
+                elif isinstance(dob, datetime.datetime):
+                    pass
+                else:
+                    dob = datetime.datetime.strptime(dob.strip(), fmt)
+            except ValueError:
+                pass
+            except AttributeError:
+                pass
+            try:
+                if sample_date == '' or sample_date is None:
+                    sample_date = None
+                elif isinstance(sample_date, datetime.datetime):
+                    pass
+                else:
+                    sample_date = datetime.datetime.strptime(sample_date.strip(), fmt)
+            except ValueError:
+                pass
+            try:
+                if result_date == '' or result_date is None:
+                    result_date = None
+                elif isinstance(result_date, datetime.datetime):
+                    pass
+                else:
+                    result_date = datetime.datetime.strptime(result_date.strip(), fmt)
+            except ValueError:
+                pass
+            try:
+                if rcvd_date == '' or rcvd_date is None:
+                    rcvd_date = None
+                elif isinstance(rcvd_date, datetime.datetime):
+                    pass
+                else:
+                    rcvd_date = datetime.datetime.strptime(rcvd_date.strip(), fmt)
             except ValueError:
                 pass
 
@@ -2094,39 +2290,39 @@ def case_import(request):
 
         if created:
 
-            sample_date = None
-            result_date = None
-            rcvd_date = None
-            for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
-                try:
-                    sample_date = line[14]
-                    sample_date = datetime.strptime(sample_date.strip(), fmt)
-                except ValueError:
-                    pass
-            for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
-                try:
-                    result_date = line[15]
-                    result_date = datetime.strptime(result_date.strip(), fmt)
-                except ValueError:
-                    pass
-            for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
-                try:
-                    rcvd_date = line[16]
-                    rcvd_date = datetime.strptime(rcvd_date.strip(), fmt)
-                except ValueError:
-                    pass
-            if sample_date is None:
-                new_person.delete()
-                messages.error(request, 'Sample Date invalid. Enter a valid date.')
-                return render(request, template)
-            if result_date is None:
-                new_person.delete()
-                messages.error(request, 'Result Date invalid. Enter a valid date.')
-                return render(request, template)
-            if rcvd_date is None:
-                new_person.delete()
-                messages.error(request, 'Received Date invalid. Enter a valid date.')
-                return render(request, template)
+            # sample_date = None
+            # result_date = None
+            # rcvd_date = None
+            # for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+            #     try:
+            #         sample_date = line[14]
+            #         sample_date = datetime.datetime.strptime(sample_date.strip(), fmt)
+            #     except ValueError:
+            #         pass
+            # for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+            #     try:
+            #         result_date = line[15]
+            #         result_date = datetime.datetime.strptime(result_date.strip(), fmt)
+            #     except ValueError:
+            #         pass
+            # for fmt in ('%Y-%m-%d', '%d%B%Y', '%d%b%Y', '%m/%d/%Y'):
+            #     try:
+            #         rcvd_date = line[16]
+            #         rcvd_date = datetime.datetime.strptime(rcvd_date.strip(), fmt)
+            #     except ValueError:
+            #         pass
+            # if sample_date is None:
+            #     new_person.delete()
+            #     messages.error(request, 'Sample Date invalid. Enter a valid date.')
+            #     return render(request, template)
+            # if result_date is None:
+            #     new_person.delete()
+            #     messages.error(request, 'Result Date invalid. Enter a valid date.')
+            #     return render(request, template)
+            # if rcvd_date is None:
+            #     new_person.delete()
+            #     messages.error(request, 'Received Date invalid. Enter a valid date.')
+            #     return render(request, template)
 
             new_test = Tests(sample_date=sample_date,
                              result_date=result_date,
@@ -2169,6 +2365,25 @@ def case_import(request):
             )
 
             if case_created:
+
+                if new_test.result == TestResults.objects.get(result_id=1):
+                    if new_test.test_type == TestTypes.objects.get(test_type_id=1):
+                        if new_test.source != TestSources.objects.get(id=3):
+                            new_case.confirmed = True
+                            new_case.probable = False
+                            new_case.monitor_not_case = False
+                            new_case.save()
+                        else:
+                            new_case.confirmed = False
+                            new_case.probable = True
+                            new_case.monitor_not_case = False
+                            new_case.save()
+                    else:
+                        new_case.confirmed = False
+                        new_case.probable = True
+                        new_case.monitor_not_case = False
+                        new_case.save()
+
                 case_test_join = CaseTestJoin(case=new_case,
                                               test=new_test)
                 case_test_join.save()
@@ -2252,18 +2467,120 @@ def case_upload_assign(request, case_list):
 @login_required(login_url='/accounts/login/')
 def statistics_dashboard(request):
 
+    # Collect starting info
     # Get all objects that have a valid status
-    qs = Cases.objects.filter(status_id__lte=13)
-    print(len(qs))
+    valid_status_list = list(range(1, 14))
+    valid_status_list.append(17)
+    print(f'Valid status ids: {valid_status_list}')
+
+    qs = Cases.objects.filter(status_id__in=valid_status_list, monitor_not_case=0)
+    confirmed_cases = qs.filter(confirmed=1)
+    probable_cases = qs.filter(probable=1)
+    deceased_cases = qs.filter(status_id=5) #COVID only deaths are this status
+    deceased_probable = deceased_cases.filter(probable=1).count()
+    deceased_confirmed = deceased_cases.filter(confirmed=1).count()
+    released_cases = qs.filter(status_id__in=range(11, 14)) #covers ids 11-13
+    current_hosp = qs.filter(status_id=4)
+
+    # == CONFIRMED POSITIVE CASES ==
+    print(f'Total valid cases: {len(qs)}')
 
     # Only select PCR tests with positive results that aren't self reported
-    molecular_pos_tests = Tests.objects.filter(test_type_id=1, result_id=1, source_id__in=range(1, 3))
-    print("Positive, official, PCR tests: %s" % len(molecular_pos_tests))
+    molecular_pos_tests = Tests.objects.filter(test_type_id=1, result_id=1, source_id__in=range(1, 3)) #covers ids 1-2
+    print(f'Positive, official, PCR tests: {len(molecular_pos_tests)}')
 
     # Select the cases that are associated with the positive tests
     cases_with_mol_pos = CaseTestJoin.objects.filter(test_id__in=molecular_pos_tests.values('test_id'))
-    print("Cases associated with these tests: %s" % len(cases_with_mol_pos))
+    print(f'Number cases associated with these tests: {len(cases_with_mol_pos)}')
 
-    rcvd_chart = prep_rcvd_data(qs, molecular_pos_tests, cases_with_mol_pos)
+    print('Building rcvd_chart')
+    rcvd_chart = charts.prep_rcvd_data(qs, molecular_pos_tests, cases_with_mol_pos, 'confirmed')
+    print('Finished getting rcvd_chart')
 
-    return render(request, 'statistics/statistics.html', {'rcvd_chart': rcvd_chart,})
+    rcvd_chart_by_sex = charts.prep_data_by_var(qs, molecular_pos_tests, cases_with_mol_pos, 'confirmed', 'sex')
+
+    # # == NONCONFIRMED POSITIVE CASES ==
+    #
+    # # Only select Non-confirmatory tests with positive results that aren't self reported
+    # noncomfirm_pos_tests = Tests.objects.filter(test_type_id__in=range(2, 4), result_id=1, source_id__in=range(1, 3))  # covers ids 1-2
+    # print(f'Positive, official, Non-confirmatory tests: {len(molecular_pos_tests)}')
+    #
+    # # Select the cases that are associated with the positive tests
+    # cases_with_nonconfirm_pos = CaseTestJoin.objects.filter(test_id__in=noncomfirm_pos_tests.values('test_id'))
+    # print(f'Number cases associated with these tests: {len(cases_with_mol_pos)}')
+    #
+    # print('Building probable chart')
+    # probable_chart = charts.prep_rcvd_data(qs, noncomfirm_pos_tests, cases_with_nonconfirm_pos, 'probable')
+    # print('Finished getting probable chart')
+
+    # == COUNTS ==
+    deceased_count = deceased_cases.count()
+    confirmed_case_count = confirmed_cases.count()
+    probable_case_count = probable_cases.count()
+    case_count = qs.count()
+    released_count = released_cases.count()
+    current_hosp_count = current_hosp.count()
+
+    return render(request, 'statistics/statistics.html', {'rcvd_chart': rcvd_chart,
+                                                          # 'probable_chart': probable_chart,
+                                                          # 'deceased_count': deceased_count,
+                                                          'deceased_confirmed': deceased_confirmed,
+                                                          'deceased_probable': deceased_probable,
+                                                          'case_count': case_count,
+                                                          'confirmed_case_count': confirmed_case_count,
+                                                          'probable_case_count': probable_case_count,
+                                                          'released_count': released_count,
+                                                          'current_hosp_count': current_hosp_count,
+                                                          })
+
+
+@login_required(login_url='/accounts/login/')
+def edit_log(request, page, ctype, case_id, log_id):
+
+    log = get_object_or_404(TraceLogs, log_id=log_id)
+
+    if log.user_id == request.user.id:
+        pass
+    elif request.user.groups.filter(name='admin_user').exists():
+        pass
+    else:
+        return render(request, 'error/permission.html')
+
+    current_text = log.notes
+    current_user = AuthUser.objects.get(id=request.user.id)
+
+    if request.method == 'POST':
+
+        editform = LogEditForm(request.POST,
+                               initial={'previous_text': current_text,
+                                        },
+                               page=page,
+                               ctype=ctype,
+                               pid=case_id)
+        # editform.log = log
+        # editform.user_id = current_user
+        # editform.edit_date = datetime.datetime.today()
+
+        if editform.is_valid():
+            log.notes = editform.cleaned_data['previous_text']
+
+            this_edit = editform.save(commit=False)
+            this_edit.previous_text = current_text
+            this_edit.user = current_user
+            this_edit.edit_date = datetime.datetime.today()
+            this_edit.log = log
+            this_edit.save()
+            log.save()
+
+            return redirect(page, cttype=ctype, pid=case_id)
+        print(editform.errors)
+
+    else:
+        editform = LogEditForm(initial={'previous_text': current_text},
+                               page=page,
+                               ctype=ctype,
+                               pid=case_id
+                               )
+
+    return render(request, 'edit/edit-log.html', {'editform': editform,
+                                                  })

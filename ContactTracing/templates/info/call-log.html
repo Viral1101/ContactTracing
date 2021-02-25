@@ -1,3 +1,4 @@
+{% load tracing_extras %}
 <!--   Begin Section for Call Log         -->
             <div class="card-group">
                 <div class="card">
@@ -5,22 +6,50 @@
                         <h5 class="card-title">PCHD Call Log</h5>
                     </div>
                     {% if logs %}
-                    {% for log in logs %}
-                    {% if log.case_id == case.case_id %}
-                    <div class="card-group">
+                        {% for log in logs %}
+                            {% if log.case_id == case.case_id %}
+                    <div class="card-group" id="log_{{ log.log.log_id }}" data-toggle="collapse" data-target="#edits_{{ log.log.log_id }}" onclick="">
                         <div class="card">
-                            {{ log.log.notes }}
+                                {{ log.log.notes }}
+                                {% in_log_list tracelogedits log.log.log_id as in_list %}
+                                {% if in_list %}
+                            <small>Click for log history.</small>
+                                {% endif %}
                         </div>
                         <div class="card">
-                            {{ log.log.user.first_name }} {{ log.log.user.last_name }} / {{ log.log.log_date }}
+                                {{ log.log.user.first_name }} {{ log.log.user.last_name }} / {{ log.log.log_date }}
                         </div>
+                                {% if request.user.id == log.log.user_id or edit_allowed%}
+                        <div class="card bg-light">
+                            <a href='/info/{{ type }}/{{ pid }}/edit/log/{{ log.log.log_id }}'>Edit</a>
+                        </div>
+                                {% endif %}
+                            {% endif %}
                     </div>
-                    {% endif %}
-                    {% endfor %}
-                    {% else %}
-                        <div class="card-body">
-                            No Call Logs recorded.
+                            {% if tracelogedits %}
+                    <div id="edits_{{ log.log.log_id }}" class="collapse" data-parent="#log_{{ log.log.log_id }}">
+                                {% for logedit in tracelogedits %}
+                                    {% if logedit.log_id == log.log.log_id %}
+                        <div class="card-group">
+                            <div class="card bg-light text-right">
+                                <b>Previous Entry:</b>{{ logedit.previous_text }}
+                            </div>
+                            <div class="card bg-light text-right">
+                                <b>Edit Reason:</b> {{ logedit.edit_reason }}
+                            </div>
+                            <div class="card bg-light text-right">
+                                <b>Edited:</b> {{ logedit.user }} {{ logedit.edit_date }}
+                            </div>
                         </div>
+                                    {% endif %}
+                                {% endfor %}
+                    </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                    <div class="card-body">
+                        No Call Logs recorded.
+                    </div>
                     {% endif %}
                 </div>
             </div>

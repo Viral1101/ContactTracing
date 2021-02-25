@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Log{% endblock %}
+
+{% block content2 %}
+
+{% load crispy_forms_tags %}
+
+<label><h4>Edit Log</h4></label>
+{% crispy editform %}
+
+{% endblock %}

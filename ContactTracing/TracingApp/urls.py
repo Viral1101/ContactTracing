@@ -30,5 +30,6 @@ urlpatterns = [
     path('upload-csv', views.case_import, name="case-import"),
     path('case-upload-assign/<str:case_list>/', views.case_upload_assign, name='case-upload-assign'),
     path('statistics', views.statistics_dashboard, name='statistics'),
+    path('<str:page>/<str:ctype>/<int:case_id>/edit/log/<int:log_id>', views.edit_log, name='edit-log'),
     # path('case-upload-template', views.download_file, name='case-upload-a=template'),
 ]

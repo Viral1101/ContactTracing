@@ -1,12 +1,43 @@
+{% load tracing_extras %}
 {% if tracelogforms %}
-<table class="table table-striped">
+{{ tracelogforms.management_form }}
+<div class="card-column">
     {% for tracelog in tracelogforms %}
-    <tr>
-        <td><b>Logged: </b>{{ tracelog.user }} {{tracelog.log_date.value}}</td>
-    </tr>
-    <tr>
-        <td>{{ tracelog.notes.value }}</td>
-    </tr>
+    <div class="card" id="log_{{ tracelog.log_id.value }}" data-toggle="collapse" data-target="#edits_{{ tracelog.log_id.value }}" onclick="">
+        <div class="card-header">
+            <b>Logged: </b>{{ tracelog.user }} {{tracelog.log_date.value}}
+        </div>
+        <div class="card-body">
+            <p class="card-text">{{ tracelog.notes.value }}</p>
+            {% if request.user.id == tracelog.user.value or edit_allowed%}
+            <p class="card-text"></p><a href='/follow-up/{{ type }}/{{ pid }}/edit/log/{{ tracelog.log_id.value }}'>Edit</a></p>
+            {% endif %}
+        </div>
+            {% in_log_list tracelogedits tracelog.log_id.value as in_list %}
+            {% if in_list %}
+        <div class="card-footer text-muted">
+            Click for log history.
+        </div>
+            {% endif %}
+    </div>
+    {% if tracelogedits %}
+    <div id="edits_{{ tracelog.log_id.value }}" class="collapse" data-parent="#log_{{ tracelog.log_id.value }}">
+        {% for logedit in tracelogedits %}
+            {% if logedit.log_id == tracelog.log_id.value %}
+      <div class="card bg-light text-right">
+          <div class="card-header">
+              <b>Edited:</b> {{ logedit.user }} {{ logedit.edit_date }}
+          </div>
+          <div class="card-body">
+              <p class="card-text"><b>Edit Reason:</b> {{ logedit.edit_reason }}</p>
+              <p class="card-text"><b>Previous Entry:</b>{{ logedit.previous_text }}</p>
+          </div>
+      </div>
+        {% endif %}
+        {% endfor %}
+
+    </div>
+    {% endif %}
     {% endfor %}
-</table>
+</div>
 {% endif %}

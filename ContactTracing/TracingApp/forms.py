@@ -1,5 +1,6 @@
 from django import forms
 from django_localflavor_us.forms import USStateSelect, USZipCodeField, USPhoneNumberField
+from django.forms import HiddenInput
 from .models import *
 from bootstrap_datepicker_plus import DatePickerInput
 from django.core.exceptions import ValidationError
@@ -372,6 +373,8 @@ class PersonForm(forms.ModelForm):
     vacc_dose2 = forms.DateField(widget=DatePickerInput(), required=False)
     vacc_type1 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
     vacc_type2 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
+    vacc_lot1 = forms.CharField(required=False)
+    vacc_lot2 = forms.CharField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -380,11 +383,13 @@ class PersonForm(forms.ModelForm):
         self.fields['vacc_dose2'].label = 'Dose 2'
         self.fields['vacc_type1'].label = 'Dose 1 type'
         self.fields['vacc_type2'].label = 'Dose 2 type'
+        self.fields['vacc_lot1'].label = 'Dose 1 lot'
+        self.fields['vacc_lot2'].label = 'Dose 2 lot'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
-            HTML("<h4>Person Information</h4>"),
+            HTML("<h4>Personal Information</h4>"),
             Row(
                 Column('first', css_class='form-group col-md-4 mb-0'),
                 Column('mi', css_class='form-group col-md-2 mb-0'),
@@ -403,8 +408,13 @@ class PersonForm(forms.ModelForm):
             Row(
                 Column('vacc_type1', css_class='form-group col-md-2 mb-0'),
                 Column('vacc_dose1', css_class='form-group col-md-4 mb-0'),
+                Column('vacc_lot1', css_class='form-group col-md-2 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
                 Column('vacc_type2', css_class='form-group col-md-2 mb-0'),
                 Column('vacc_dose2', css_class='form-group col-md-4 mb-0'),
+                Column('vacc_lot2', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
             ),
         )
@@ -441,12 +451,14 @@ class NewPersonForm(forms.ModelForm):
     vacc_dose2 = forms.DateField(widget=DatePickerInput(), required=False)
     vacc_type1 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
     vacc_type2 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
+    vacc_lot1 = forms.CharField(required=False)
+    vacc_lot2 = forms.CharField(required=False)
 
     def clean_dob(self):
         data = self.cleaned_data['dob']
 
         if data is None:
-            data = datetime.datetime(1900, 1, 1) #Set default birthday of 01 Jan 1900 for when birthday is left blank
+            data = datetime.date(1900, 1, 1) #Set default birthday of 01 Jan 1900 for when birthday is left blank
 
         #     Date should only exist in the past
         if data >= datetime.date.today():
@@ -513,6 +525,8 @@ class NewPersonForm(forms.ModelForm):
                   'vacc_dose2',
                   'vacc_type1',
                   'vacc_type2',
+                  'vacc_lot1',
+                  'vacc_lot2',
                   ]
 
 
@@ -529,6 +543,9 @@ class InvestigationCaseForm(forms.ModelForm):
     # release_date = forms.DateField(widget=DatePickerInput)
     last_follow = forms.DateField(required=False, widget=forms.HiddenInput)
     rel_pcp = forms.BooleanField(required=False)
+    hospitalized = forms.BooleanField(required=False)
+    icu = forms.BooleanField(required=False)
+    onset_date = forms.DateField(widget=DatePickerInput(), required=False)
     # text_follow_up = forms.BooleanField(required=False)
     # email_follow_up = forms.BooleanField(required=False)
 
@@ -549,6 +566,7 @@ class InvestigationCaseForm(forms.ModelForm):
         self.fields['confirmed'].label = 'Positive Test Confirmation'
         self.fields['old_case_no'].label = 'Old ID'
         self.fields['monitor_not_case'].label = 'Not a case - Monitor'
+        self.fields['icu'].label = 'Required ICU'
         self.fields['last_follow'].disabled = True
         # self.fields['tent_release'].label = 'Tentative Release Date'
         self.form_method = 'post'
@@ -556,12 +574,14 @@ class InvestigationCaseForm(forms.ModelForm):
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
+            HTML("<h4>Primary Care Info</h4>"),
             Row(
                 Column('iso_pcp', css_class='form-group col-md-2 mb-0'),
                 Column('reqs_pcp', css_class='form-group col-md-2 mb-0'),
                 Column('rel_pcp', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
+            HTML("<h4>Case Data</h4>"),
             Row(
                 Column('old_case_no', css_class='form-group col-md-4 mb-0'),
                 Column('confirmed', css_class='form-group col-md-2 mb-0'),
@@ -571,9 +591,15 @@ class InvestigationCaseForm(forms.ModelForm):
                 css_class='form-row'
             ),
             Row(
+                Column('onset_date', css_class='form-group col-md-4 mb-0'),
                 Column('tent_release', css_class='form-group col-md-4 mb-0'),
-                Column('status', css_class='form-group col-md-4 mb-0'),
                 Column('release_date', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('hospitalized', css_class='form-group col-md-2 mb-0'),
+                Column('icu', css_class='form-group col-md-2 mb-0'),
+                Column('status', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
             # Row(
@@ -620,6 +646,9 @@ class FollowUpCaseForm(forms.ModelForm):
     probable = forms.BooleanField(required=False)
     monitor_not_case = forms.BooleanField(required=False)
     old_case_no = forms.CharField(max_length=15, required=False)
+    hospitalized = forms.BooleanField(required=False)
+    icu = forms.BooleanField(required=False)
+    onset_date = forms.DateField(widget=DatePickerInput(), required=False)
     # text_follow_up = forms.BooleanField(required=False)
     # email_follow_up = forms.BooleanField(required=False)
 
@@ -640,27 +669,37 @@ class FollowUpCaseForm(forms.ModelForm):
         self.fields['confirmed'].label = 'Positive Test Confirmation'
         self.fields['monitor_not_case'].label = 'Not a Case - Monitor'
         self.fields['old_case_no'].label = 'Old ID'
+        self.fields['icu'].label = 'Required ICU'
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
         self.helper.layout = Layout(
+            HTML("<h4>Primary Care Info</h4>"),
             Row(
                 Column('iso_pcp', css_class='form-group col-md-2 mb-0'),
                 Column('reqs_pcp', css_class='form-group col-md-2 mb-0'),
                 Column('rel_pcp', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
+            HTML("<h4>Case Data</h4>"),
             Row(
                 Column('old_case_no', css_class='form-group col-md-4 mb-0'),
                 Column('confirmed', css_class='form-group col-md-2 mb-0'),
                 Column('probable', css_class='form-group col-md-2 mb-0'),
                 Column('monitor_not_case', css_class='form-group col-md-2 mb-0'),
+                Column('active', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
             ),
             Row(
+                Column('onset_date', css_class='form-group col-md-4 mb-0'),
                 Column('tent_release', css_class='form-group col-md-4 mb-0'),
-                Column('status', css_class='form-group col-md-4 mb-0'),
                 Column('release_date', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('hospitalized', css_class='form-group col-md-2 mb-0'),
+                Column('icu', css_class='form-group col-md-2 mb-0'),
+                Column('status', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
             # Row(
@@ -908,6 +947,8 @@ class PersonFormSetHelper(FormHelper):
         self.fields['vacc_dose2'].label = 'Dose 2'
         self.fields['vacc_type1'].label = 'Dose 1 type'
         self.fields['vacc_type2'].label = 'Dose 2 type'
+        self.fields['vacc_lot1'].label = 'Dose 1 lot'
+        self.fields['vacc_lot2'].label = 'Dose 2 lot'
         self.form_method = 'post'
         self.form_tag = False
         self.disable_csrf = True
@@ -1152,6 +1193,9 @@ class OldSymptomLogForm(forms.ModelForm):
         for nam, field in self.fields.items():
             field.disabled = True
         self.fields['alt_dx'].label = 'Alternate Diagnosis'
+        self.helper = FormHelper(self)
+        self.helper.disable_csrf = True
+        self.helper.form_tag = False
 
 
 class SymptomForm(forms.ModelForm):
@@ -1539,13 +1583,6 @@ class FollowUpContactForm(forms.ModelForm):
     #     if data is None:
     #         data = True
     #     return data
-
-    # def clean(self):
-    #     cleaned_data = super().clean()
-    #     # if cleaned_data['mark_as_contacted']:
-    #     #     cleaned_data['last_follow'] = datetime.date.today()
-    #     # cleaned_data['user'] = AuthUser.objects.get(id=self.user.id)
-    #     return cleaned_data
 
 
 class TestFormHelper(FormHelper):
@@ -2003,3 +2040,50 @@ class ContactBulkEditFormHelper(FormHelper):
                 )
             )
         )
+
+
+class LogEditForm(forms.ModelForm):
+
+    previous_text = forms.CharField(widget=forms.Textarea())
+    edit_reason = forms.CharField()
+    log = forms.ModelChoiceField(queryset=TraceLogs.objects.none())
+    page = ''
+    ctype = ''
+    pid = ''
+    cancel_url = ''
+
+    class Meta:
+        model = LogEdits
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        self.page = kwargs.pop('page', None)
+        self.ctype = kwargs.pop('ctype', None)
+        self.pid = kwargs.pop('pid', None)
+        self.cancel_url = f'/{self.page}/{self.ctype}/{self.pid}'
+        super().__init__(*args, **kwargs)
+        self.form_method = 'post'
+        # self.form_tag = False
+        # self.disable_csrf = True
+        self.fields['log'].widget = HiddenInput()
+        self.fields['user'].widget = HiddenInput()
+        self.fields['edit_date'].widget = HiddenInput()
+        self.fields['log'].required = False
+        self.fields['user'].required = False
+        self.fields['edit_date'].required = False
+        self.helper = FormHelper(self)
+        self.helper.layout = Layout(
+            Row(
+                Column('previous_text', css_class='form-group col-md-6 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('edit_reason', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Submit('save_and_return', 'Save and Return', css_class='btn btn-success col-md-2 mr-md-3'),
+            Button('cancel', 'Cancel',
+                   css_class='btn btn-danger col-md-2 mr-md-3',
+                   onclick="window.location.href = '{}';".format(self.cancel_url)),
+        )
+        self.helper.render_hidden_fields = False

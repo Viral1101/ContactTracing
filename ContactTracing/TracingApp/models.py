@@ -219,6 +219,9 @@ class Cases(models.Model):
     text_follow_up = models.BooleanField(blank=True, null=True)
     email_follow_up = models.BooleanField(blank=True, null=True)
     monitor_not_case = models.BooleanField(default=False)
+    hospitalized = models.BooleanField(default=False)
+    icu = models.BooleanField(default=False)
+    onset_date = models.DateField(blank=True, null=True)
 
     class Meta:
         managed = True
@@ -493,6 +496,8 @@ class Persons(models.Model):
     vacc_dose2 = models.DateField(blank=True, null=True)
     vacc_type1 = models.ForeignKey('VaccineTypes', models.DO_NOTHING, blank=True, null=True, related_name='type1')
     vacc_type2 = models.ForeignKey('VaccineTypes', models.DO_NOTHING, blank=True, null=True, related_name='type2')
+    vacc_lot1 = models.TextField(blank=True, null=True)
+    vacc_lot2 = models.TextField(blank=True, null=True)
 
     class Meta:
         # managed = False
@@ -927,3 +932,16 @@ class EpitraxPCHDCaseJoin(models.Model):
     class Meta:
         managed = True
         db_table = 'epitrax_pchd_case_join'
+
+
+class LogEdits(models.Model):
+    edit_id = models.AutoField(primary_key=True)
+    log = models.ForeignKey(TraceLogs, models.DO_NOTHING, null=False)
+    previous_text = models.TextField(null=False, blank=False)
+    edit_reason = models.TextField(null=False, blank=False)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING, null=False)
+    edit_date = models.DateField(null=False, blank=False)
+
+    class Meta:
+        managed = True
+        db_table = 'log_edits'

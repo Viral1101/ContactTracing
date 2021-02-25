@@ -4,8 +4,53 @@
 
 {% block content2 %}
 
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th scope="col"></th>
+      <th scope="col">Count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">Total Cases</th>
+      <td>{{ case_count }}</td>
+    </tr>
+    <tr>
+      <th scope="row">Confirmed Cases</th>
+      <td>{{ confirmed_case_count }}</td>
+    </tr>
+    <tr>
+      <th scope="row">Probable Cases</th>
+      <td>{{ probable_case_count }}</td>
+    </tr>
+    <tr>
+      <th scope="row">Released Cases</th>
+      <td>{{ released_count }}</td>
+    </tr>
+    <tr>
+      <th scope="row">Current Hospitalization</th>
+      <td>{{ current_hosp_count }}</td>
+    </tr>
+    <tr>
+      <th scope="row">Deceased - Confirmed Case</th>
+      <td>{{ deceased_confirmed }}</td>
+    </tr>
+    <tr>
+      <th scope="row">Deceased - Probable Case</th>
+      <td>{{ deceased_probable }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Confirmed</h3>
 {% autoescape off %}
-{{ rcvd_chart }}
+{{ rcvd_chart|safe }}
+{% endautoescape %}
+
+<h3>Probables</h3>
+{% autoescape off %}
+{{ probables_chart|safe }}
 {% endautoescape %}
 
 {% endblock %}
