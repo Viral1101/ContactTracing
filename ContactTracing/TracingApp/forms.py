@@ -375,6 +375,7 @@ class PersonForm(forms.ModelForm):
     vacc_type2 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
     vacc_lot1 = forms.CharField(required=False)
     vacc_lot2 = forms.CharField(required=False)
+    unverified_identify = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -402,6 +403,10 @@ class PersonForm(forms.ModelForm):
                 Column('dob', css_class='form-group col-md-4 mb-0'),
                 Column('age', css_class='form-group col-md-2 mb-0'),
                 Column('contact_pref', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('unverified_identity', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
             ),
             HTML("<h4>COVID Vaccine Info</h4>"),
@@ -453,6 +458,7 @@ class NewPersonForm(forms.ModelForm):
     vacc_type2 = forms.ModelChoiceField(queryset=VaccineTypes.objects.all(), required=False)
     vacc_lot1 = forms.CharField(required=False)
     vacc_lot2 = forms.CharField(required=False)
+    unverified_identity = forms.BooleanField(required=False)
 
     def clean_dob(self):
         data = self.cleaned_data['dob']
@@ -527,6 +533,7 @@ class NewPersonForm(forms.ModelForm):
                   'vacc_type2',
                   'vacc_lot1',
                   'vacc_lot2',
+                  'unverified_identity',
                   ]
 
 
@@ -546,6 +553,7 @@ class InvestigationCaseForm(forms.ModelForm):
     hospitalized = forms.BooleanField(required=False)
     icu = forms.BooleanField(required=False)
     onset_date = forms.DateField(widget=DatePickerInput(), required=False)
+    status = forms.ModelChoiceField(queryset=Statuses.objects.all().exclude(status_id__in=[6, 9, 10, 12]))
     # text_follow_up = forms.BooleanField(required=False)
     # email_follow_up = forms.BooleanField(required=False)
 
@@ -965,6 +973,10 @@ class PersonFormSetHelper(FormHelper):
                 Column('dob', css_class='form-group col-md-4 mb-0'),
                 Column('age', css_class='form-group col-md-2 mb-0'),
                 Column('contact_pref', css_class='form-group col-md-4 mb-0'),
+                css_class='form-row'
+            ),
+            Row(
+                Column('unverified_identity', css_class='form-group col-md-2 mb-0'),
                 css_class='form-row'
             ),
             Row(
@@ -1452,7 +1464,7 @@ class AddContactForm(forms.ModelForm):
     mark_as_contacted = forms.BooleanField(required=False)
     copy_case_notes = forms.BooleanField(required=False)
     old_contact_no = forms.CharField(max_length=15, required=False)
-    status = forms.ModelChoiceField(queryset=Statuses.objects.all().exclude(status_id__in=[1, 3]))
+    status = forms.ModelChoiceField(queryset=Statuses.objects.all().exclude(status_id__in=[1, 3, 11, 15]))
 
     class Meta:
         model = Contacts
@@ -1523,6 +1535,7 @@ class FollowUpContactForm(forms.ModelForm):
     active = forms.BooleanField(widget=forms.HiddenInput(), required=False)
     old_contact_no = forms.CharField(max_length=15, required=False)
     upgraded_case = forms.CharField(widget=forms.HiddenInput(), required=False)
+    status = forms.ModelChoiceField(queryset=Statuses.objects.all().exclude(status_id__in=[1, 3, 11, 15]))
 
     class Meta:
         model = Contacts

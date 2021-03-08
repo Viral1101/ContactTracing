@@ -14,7 +14,7 @@ class Addresses(models.Model):
     street2 = models.TextField(blank=True, null=True)
     city = models.TextField(blank=True, null=True)
     state = models.CharField(max_length=2, blank=True, null=True)
-    post_code = models.CharField(max_length=5, blank=True, null=True)
+    post_code = models.CharField(max_length=10, blank=True, null=True)
     # people = models.ManyToManyField('Addresses', through='PersonAddressJoin')
 
     class Meta:
@@ -498,6 +498,7 @@ class Persons(models.Model):
     vacc_type2 = models.ForeignKey('VaccineTypes', models.DO_NOTHING, blank=True, null=True, related_name='type2')
     vacc_lot1 = models.TextField(blank=True, null=True)
     vacc_lot2 = models.TextField(blank=True, null=True)
+    unverified_identity = models.BooleanField(default=False)
 
     class Meta:
         # managed = False
@@ -945,3 +946,67 @@ class LogEdits(models.Model):
     class Meta:
         managed = True
         db_table = 'log_edits'
+
+
+class TravelNotifications(models.Model):
+    notice_id = models.AutoField(primary_key=True)
+    pchd_entered_date = models.DateField()
+    pchd_entered_by = models.ForeignKey(AuthUser, on_delete=models.DO_NOTHING)
+    record_id = models.IntegerField()
+    create_date = models.DateField()
+    document_num = models.TextField(null=True, blank=True)
+    document_country = models.CharField(max_length=25, null=True, blank=True)
+    document_type = models.CharField(max_length=25, null=True, blank=True)
+    flight_num = models.TextField(null=True, blank=True)
+    flight_carrier_code = models.CharField(max_length=10, null=True, blank=True)
+    from_officer = models.BooleanField(null=True, blank=True)
+    arrival_date = models.DateField(null=True, blank=True)
+    departure_date = models.DateField(null=True, blank=True)
+    acknowledged_question = models.TextField(null=True, blank=True)
+    address_geotype = models.TextField(null=True, blank=True)
+    arrival_port_city = models.TextField(null=True, blank=True)
+    arrival_port_code = models.TextField(null=True, blank=True)
+    arrival_port_name = models.TextField(null=True, blank=True)
+    arrival_port_state = models.CharField(max_length=2, null=True, blank=True)
+    arrival_country_code = models.CharField(max_length=2, null=True, blank=True)
+    departure_country_code = models.CharField(max_length=2, null=True, blank=True)
+    departure_port_city = models.TextField(null=True, blank=True)
+    departure_port_code = models.TextField(null=True, blank=True)
+    departure_port_name = models.TextField(null=True, blank=True)
+    departure_port_state = models.CharField(max_length=2, null=True, blank=True)
+    country = models.TextField(null=True, blank=True)
+    countries_visited = models.TextField(null=True, blank=True)
+    other_countries = models.TextField(null=True, blank=True)
+    citizenship = models.CharField(max_length=50, null=True, blank=True)
+    contact_first_name = models.TextField(null=True, blank=True)
+    contact_last_name = models.TextField(null=True, blank=True)
+    contact_phone_number = models.CharField(max_length=31, null=True, blank=True)
+    contact_phone_type = models.CharField(max_length=10, null=True, blank=True)
+    contact_type = models.CharField(max_length=25, null=True, blank=True)
+    crew = models.BooleanField(null=True, blank=True)
+    traveler_id = models.IntegerField(null=True, blank=True)
+    traveler_id_type = models.CharField(max_length=25, null=True, blank=True)
+    license_plate = models.CharField(max_length=25, null=True, blank=True)
+    license_state = models.CharField(max_length=2, null=True, blank=True)
+    transportation_mode = models.TextField(null=True, blank=True)
+    privacy_banner = models.TextField(null=True, blank=True)
+    voyage_id = models.TextField(null=True, blank=True)
+    vessel_name = models.TextField(null=True, blank=True)
+    possible_212f_travel = models.BooleanField(null=True, blank=True)
+    receny = models.TextField(null=True, blank=True)
+    raw_file_name = models.TextField(null=True, blank=True)
+    tkey = models.TextField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = 'travel_notifications'
+
+
+class PersonTravelNoticeJoin(models.Model):
+    join_id = models.AutoField(primary_key=True)
+    person = models.ForeignKey(Persons, on_delete=models.PROTECT)
+    notice = models.ForeignKey(TravelNotifications, on_delete=models.CASCADE)
+
+    class Meta:
+        managed = True
+        db_table = 'person_travel_notice_join'

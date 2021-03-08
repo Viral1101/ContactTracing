@@ -9,6 +9,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Q
 from .charts import charts
+from .statistics import statistics
 import csv
 import io
 
@@ -144,6 +145,8 @@ def info(request, cttype, pid):
     else:
         raise Http404("Invalid case type")
 
+    notices = PersonTravelNoticeJoin.objects.filter(person_id=data.person_id)
+
     if data is None:
         raise Http404("No data for this case exists")
 
@@ -265,6 +268,7 @@ def info(request, cttype, pid):
                                                       'tracelogedits': trace_log_edits,
                                                       'edit_allowed': edit_allowed,
                                                       'pid': pid,
+                                                      'notices': notices,
                                                       })
 
 
@@ -664,9 +668,10 @@ def case_investigation(request, cttype, pid):
                             # if this_test.result == TestResults.get(result_id=1):
                             #     if this_test.test_type == TestTypes.get
                             this_test.save()
-                            case_test, case_test_ctd = CaseTestJoin.objects.get_or_create(case=this_case, test=this_test)
-                            if case_test_ctd:
-                                case_test.save()
+                            case_test, case_test_ctd = CaseTestJoin.objects.update_or_create(case=this_case,
+                                                                                             test=this_test)
+                            # if case_test_ctd:
+                            #     case_test.save()
 
             # Mark the assignment as done with the date
 
@@ -1315,11 +1320,11 @@ def followup(request, cttype, pid):
                         this_test.logged_date = date.today()
                         this_test.save()
                         if cttype == 'C':
-                            test_link = CaseTestJoin(case=case, test=this_test)
-                            test_link.save()
+                            test_link = CaseTestJoin.objects.update_or_create(case=case, test=this_test)
+                            # test_link.save()
                         elif cttype == 'CT':
-                            test_link = ContactTestJoin(contact=case, test=this_test)
-                            test_link.save()
+                            test_link = ContactTestJoin.update_or_create(contact=case, test=this_test)
+                            # test_link.save()
 
             for new_symptomform in new_symptomforms:
                 if new_symptomform.is_valid():
@@ -1815,8 +1820,12 @@ def edit_cluster(request, cluster_id):
 
             if 'save_and_exit' in request.POST:
                 # print('save_exit')
-                messages.success(request, "Case %s set as the index for cluster %s." % (index_case_id, cluster_id))
-                return redirect('info', cttype='C', pid=index_case_id.case_id)
+                if index_case_id is None:
+                    messages.error(request, 'Please select an index case.')
+                    return redirect('edit-cluster', cluster_id)
+                else:
+                    messages.success(request, "Case %s set as the index for cluster %s." % (index_case_id, cluster_id))
+                    return redirect('info', cttype='C', pid=index_case_id.case_id)
             else:
                 ClusterCaseJoin.objects.filter(cluster=cluster).delete()
                 cluster.delete()
@@ -2119,8 +2128,247 @@ def edit_bulk_contacts(request, cttype, case_id, contact_list):
                                       prefix="exposure")
 
     return render(request, 'contacts/bulk-edit-contacts.html', {'contactforms': contactforms,
-                                                              'contactformhelper': contactformhelper,
-                                                              })
+                                                                'contactformhelper': contactformhelper,
+                                                                })
+
+
+@login_required(login_url='/accounts/login/')
+def travel_import(request):
+    from django.utils.datastructures import MultiValueDictKeyError
+    from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
+    import pandas as pd
+    import openpyxl
+    import math
+
+    template = "import/import_travel.html"
+    # data = Cases.objects.all()
+
+    if request.method == "GET":
+        return render(request, template)
+
+    file = None
+
+    try:
+        file = request.FILES['file']
+    except MultiValueDictKeyError:
+        messages.error(request, 'No file selected.')
+        return render(request, template)
+
+    if not file.name.endswith('.xlsx'):
+        messages.error(request, 'Expected xlsx file')
+
+    df = pd.read_excel(file,
+                       engine='openpyxl',
+                       keep_default_na=False,
+                       na_values=['N/A'],
+                       usecols="A:BG")
+
+    df = df.where(pd.notnull(df), None)
+
+    print(type(df))
+    print(df.columns)
+    contacts_added = []
+
+    df.columns = ['record_id',
+                  'create_date',
+                  'document_num',
+                  'flight_num',
+                  'arrival_date',
+                  'departure_date',
+                  'acknowledged_question',
+                  'city',
+                  'address_geotype',
+                  'state',
+                  'street',
+                  'zip',
+                  'arrival_port_city',
+                  'arrival_port_code',
+                  'arrival_port_name',
+                  'arrival_port_state',
+                  'dob',
+                  'citizenship',
+                  'contact_first_name',
+                  'contact_last_name',
+                  'contact_phone_number',
+                  'contact_phone_type',
+                  'contact_type',
+                  'crew',
+                  'document_country',
+                  'document_type',
+                  'email',
+                  'first',
+                  'flight_carrier_code',
+                  'from_officer',
+                  'sex',
+                  'traveler_id',
+                  'traveler_id_type',
+                  'last',
+                  'license_plate',
+                  'license_state',
+                  'transportation_mode',
+                  'phone',
+                  'phone_1_type',
+                  'privacy_banner',
+                  'phone_2',
+                  'phone_2_type',
+                  'vessel_name',
+                  'voyage_id',
+                  'latitude',
+                  'longitude',
+                  'possible_212f_travel',
+                  'receny',
+                  'raw_file_name',
+                  'tkey',
+                  'arrival_country_code',
+                  'departure_country_code',
+                  'departure_port_city',
+                  'country',
+                  'countries_visited',
+                  'departure_port_code',
+                  'departure_port_name',
+                  'departure_port_state',
+                  'other_countries',
+                  ]
+
+    df.replace('N/A', '')
+
+    for index, row in df.iterrows():
+        dob = row['dob']
+
+        try:
+            new_person, created = Persons.objects.update_or_create(
+                first=row['first'],
+                mi=None,
+                last=row['last'],
+                suffix=None,
+                sex=row['sex'],
+                dob=dob,
+                # age=column[6],
+            )
+        except MultipleObjectsReturned:
+            messages.error(request, f'{row["first"]} {row["last"]} matches more than 1 person in the DB. '
+                                    f'You will need to manually enter this entry.')
+            continue
+
+        new_travel, travel_created = TravelNotifications.objects.update_or_create(
+            pchd_entered_date=datetime.datetime.today(),
+            pchd_entered_by=AuthUser.objects.get(id=request.user.id),
+            record_id=row['record_id'],
+            create_date=row['create_date'],
+            document_num=row['document_num'],
+            document_country=row['document_country'],
+            document_type=row['document_type'],
+            flight_num=row['flight_num'],
+            flight_carrier_code=row['flight_carrier_code'],
+            from_officer=row['from_officer'],
+            arrival_date=row['arrival_date'],
+            departure_date=row['departure_date'],
+            acknowledged_question=row['acknowledged_question'],
+            address_geotype=row['address_geotype'],
+            arrival_port_city=row['arrival_port_city'],
+            arrival_port_code=row['arrival_port_code'],
+            arrival_port_name=row['arrival_port_name'],
+            arrival_port_state=row['arrival_port_state'],
+            arrival_country_code=row['arrival_country_code'],
+            departure_country_code=row['departure_country_code'],
+            departure_port_city=row['departure_port_city'],
+            departure_port_code=row['departure_port_code'],
+            departure_port_name=row['departure_port_name'],
+            departure_port_state=row['departure_port_state'],
+            country=row['country'],
+            countries_visited=row['countries_visited'],
+            other_countries=row['other_countries'],
+            citizenship=row['citizenship'],
+            contact_first_name=row['contact_first_name'],
+            contact_last_name=row['contact_last_name'],
+            contact_phone_number=row['contact_phone_number'],
+            contact_phone_type=row['contact_phone_type'],
+            contact_type=row['contact_type'],
+            crew=row['crew'],
+            traveler_id=row['traveler_id'],
+            traveler_id_type=row['traveler_id_type'],
+            license_plate=row['license_plate'],
+            license_state=row['license_state'],
+            transportation_mode=row['transportation_mode'],
+            privacy_banner=row['privacy_banner'],
+            voyage_id=row['voyage_id'],
+            vessel_name=row['vessel_name'],
+            possible_212f_travel=row['possible_212f_travel'],
+            receny=row['receny'],
+            raw_file_name=row['raw_file_name'],
+            tkey=row['tkey'],
+        )
+
+        if travel_created:
+            person_travel_join = PersonTravelNoticeJoin.objects.update_or_create(person=new_person,
+                                                                                 notice=new_travel)
+        else:
+            messages.error(request, f'Failed to create travel notice for {new_person.first} {new_person.last}. '
+                                    f'The notice may already exist. Check the file entry and try again.')
+            if created:
+                new_person.delete()
+            return render(request, template)
+
+        if created:
+
+            if row['street'] != '' or row['city'] != '':
+                new_address = Addresses(street=row['street'],
+                                        street2='',
+                                        city=row['city'],
+                                        state=row['state'],
+                                        post_code=row['zip'])
+                new_address.save()
+                address_join = PersonAddressJoin(person=new_person,
+                                                 address=new_address)
+                address_join.save()
+
+            if row['phone'] != '':
+                new_phone = Phones(phone_number=row['phone'])
+                new_phone.save()
+                phone_join = PersonPhoneJoin(person=new_person,
+                                             phone=new_phone,
+                                             note=row['phone_1_type'])
+                phone_join.save()
+
+            if row['phone_2'] is not None:
+                new_phone2 = Phones(phone_number=row['phone_2'])
+                new_phone2.save()
+                phone_join2 = PersonPhoneJoin(person=new_person,
+                                              phone=new_phone2,
+                                              note=row['phone_2_type'])
+                phone_join2.save()
+
+            if row['email'] != '':
+                new_email = Emails(email_address=row['email'])
+                new_email.save()
+                email_join = PersonEmailJoin(person=new_person,
+                                             email=new_email)
+                email_join.save()
+
+        else:
+            person_travel_join = PersonTravelNoticeJoin.objects.update_or_create(person=new_person,
+                                                                                 notice=new_travel)
+
+        try:
+            contact = Contacts.objects.get(person=new_person)
+            contact.active = True
+            contact.status = Statuses.objects.get(status_id=2)
+            contact.save()
+        except ObjectDoesNotExist:
+            contact = Contacts(person=new_person,
+                               active=True,
+                               status=Statuses.objects.get(status_id=2))
+            contact.save()
+
+        contacts_added.append(contact.contact_id)
+
+    context = {}
+    contacts_added = list(set(contacts_added))
+
+    if len(contacts_added) > 0:
+        return redirect("case-upload-assign", case_list=contacts_added, ctype='CT')
+    else:
+        return render(request, template, context)
 
 
 @login_required(login_url='/accounts/login/')
@@ -2404,19 +2652,24 @@ def case_import(request):
     context = {}
 
     if len(cases_added) > 0:
-        return redirect("case-upload-assign", case_list=cases_added)
+        return redirect("case-upload-assign", case_list=cases_added, ctype='C')
     else:
         return render(request, template, context)
 
 
 @login_required(login_url='/accounts/login/')
-def case_upload_assign(request, case_list):
+def case_upload_assign(request, case_list, ctype):
 
     cases = case_list[1:(len(case_list) - 1)]
     cases = cases.replace(" ", "")
     cases = cases.split(",")
 
-    cases = Cases.objects.filter(case_id__in=cases)
+    if ctype == 'C':
+        cases = Cases.objects.filter(case_id__in=cases)
+    elif ctype == 'CT':
+        cases = Contacts.objects.filter(contact_id__in=cases)
+    else:
+        render(request, 'error/permission.html')
     CaseAssignmentFormsest = formset_factory(AssignUploadedCaseForm, extra=len(cases))
 
     assignment = Assignments()
@@ -2444,11 +2697,18 @@ def case_upload_assign(request, case_list):
                         # print('checked box')
                         user_assigned = caseassign.cleaned_data['assign_box']
                         if user_assigned is not None and user_assigned != AuthUser.objects.get(id=1):
-                            this_assign = Assignments(user=user_assigned,
-                                                      case=cases[i],
-                                                      status=pending_status,
-                                                      assign_type=AssignmentType.objects.get(assign_type_id=1))
-                            this_assign.save()
+                            if ctype == 'C':
+                                this_assign = Assignments(user=user_assigned,
+                                                          case=cases[i],
+                                                          status=pending_status,
+                                                          assign_type=AssignmentType.objects.get(assign_type_id=1))
+                                this_assign.save()
+                            elif ctype == 'CT':
+                                this_assign = Assignments(user=user_assigned,
+                                                          contact=cases[i],
+                                                          status=pending_status,
+                                                          assign_type=AssignmentType.objects.get(assign_type_id=1))
+                                this_assign.save()
                 i = i + 1
 
             return redirect('assignments')
@@ -2461,6 +2721,7 @@ def case_upload_assign(request, case_list):
     return render(request, 'bulk-assign/multiple-assign.html', {'assigncases': zip(caseassignments, cases),
                                                                 # 'assignform': assignform,
                                                                 'assignformset': caseassignments,
+                                                                'type': ctype,
                                                                 })
 
 
@@ -2482,16 +2743,30 @@ def statistics_dashboard(request):
     released_cases = qs.filter(status_id__in=range(11, 14)) #covers ids 11-13
     current_hosp = qs.filter(status_id=4)
 
+    positive_tests = CaseTestJoin.objects.all().prefetch_related('test', 'case')
+    positive_ag_probables = positive_tests.filter(test__result_id=1,
+                                                  test__test_type_id=2,
+                                                  test__source_id__lt=3,
+                                                  case__probable=1,
+                                                  case__status_id__in=valid_status_list,
+                                                  case__person__unverified_identity=0)
+
+    probable_unverified_identity = probable_cases.filter(person__unverified_identity=1)
+
+    print(f'{positive_ag_probables.values()}')
+
+    # statistics.queryset_to_charts(qs, positive_tests)
+
     # == CONFIRMED POSITIVE CASES ==
-    print(f'Total valid cases: {len(qs)}')
+    # print(f'Total valid cases: {len(qs)}')
 
     # Only select PCR tests with positive results that aren't self reported
     molecular_pos_tests = Tests.objects.filter(test_type_id=1, result_id=1, source_id__in=range(1, 3)) #covers ids 1-2
-    print(f'Positive, official, PCR tests: {len(molecular_pos_tests)}')
+    # print(f'Positive, official, PCR tests: {len(molecular_pos_tests)}')
 
     # Select the cases that are associated with the positive tests
     cases_with_mol_pos = CaseTestJoin.objects.filter(test_id__in=molecular_pos_tests.values('test_id'))
-    print(f'Number cases associated with these tests: {len(cases_with_mol_pos)}')
+    # print(f'Number cases associated with these tests: {len(cases_with_mol_pos)}')
 
     print('Building rcvd_chart')
     rcvd_chart = charts.prep_rcvd_data(qs, molecular_pos_tests, cases_with_mol_pos, 'confirmed')
@@ -2517,6 +2792,8 @@ def statistics_dashboard(request):
     deceased_count = deceased_cases.count()
     confirmed_case_count = confirmed_cases.count()
     probable_case_count = probable_cases.count()
+    positive_ag_probable_count = positive_ag_probables.count()
+    probable_unverified_identity_count = probable_unverified_identity.count()
     case_count = qs.count()
     released_count = released_cases.count()
     current_hosp_count = current_hosp.count()
@@ -2531,6 +2808,8 @@ def statistics_dashboard(request):
                                                           'probable_case_count': probable_case_count,
                                                           'released_count': released_count,
                                                           'current_hosp_count': current_hosp_count,
+                                                          'positive_ag_probable_count': positive_ag_probable_count,
+                                                          'probable_unverified_identity_count': probable_unverified_identity_count,
                                                           })
 
 

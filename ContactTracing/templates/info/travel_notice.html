@@ -1,0 +1,64 @@
+<div class="card">
+    <div class="card-header" id="travel_notice_start" data-toggle="collapse" data-target=".travel_notices" onclick="">
+        <h5 class="card-title">Travel Notices</h5>
+    </div>
+    <div class="card-group" id="travel_notices" class="collapse show" data-parent="#travel_notice_start">
+        <div class="card travel_notices collapse show">
+            {% for notice in notices %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-3 border-right">
+                            <h5>Departure</h5>
+                            <small>
+                                Date: {{ notice.notice.departure_date }}<br/>
+                                Country: {{ notice.notice.departure_country_code }}<br/>
+                                State: {{ notice.notice.departure_port_state }}<br/>
+                                City: {{ notice.notice.departure_port_city }}<br/>
+                                Port name: {{ notice.notice.departure_port_name }}<br/>
+                                Port code: {{ notice.notice.departure_port_code }}
+                            </small>
+                        </div>
+                        <div class="col-3 border-right">
+                            <h5>Arrival</h5>
+                            <small>
+                                Date: {{ notice.notice.arrival_date }}<br/>
+                                Country: {{ notice.notice.arrival_country_code }}<br/>
+                                State: {{ notice.notice.arrival_port_state }}<br/>
+                                City: {{ notice.notice.arrival_port_city }}<br/>
+                                Port name: {{ notice.notice.arrival_port_name }}<br/>
+                                Port code: {{ notice.notice.arrival_port_code }}
+                            </small>
+                        </div>
+                        <div class="col-3 border-right">
+                            <h5>Travel Info</h5>
+                            <small>
+                                Mode: {{ notice.notice.transportation_mode }}<br/>
+                                Airline: {{ notice.notice.flight_carrier_code }} {% if notice.notice.flight_num %}#: {{ notice.notice.flight_num}} {% endif %}<br/>
+                                Car: {{ notice.notice.license_state }} {%if notice.notice.license_plate %}{{ notice.notice.license_plate }}{% endif %}<br/>
+                                Ship: {{ notice.notice.vessel_name }} {%if notice.notice.voyage_id %}{{ notice.notice.voyage_id }}{% endif %}<br/>
+                                212f Flag: {{ notice.notice.possible_212f_travel }}<br/>
+                                From officer: {{ notice.notice.from_officer }}
+                            </small>
+                        </div>
+                        <div class="col-3">
+                            <h5>Other Info</h5>
+                            <small>
+                                Citizenship: {{ notice.notice.citizenship }}<br/>
+                                Country: {{ notice.notice.country }}<br/>
+                                Countries: {{ notice.notice.countries_visited }}<br/>
+                                Other Countries: {{ notice.notice.other_countries }}<br/>
+                                From officer: {{ notice.notice.from_officer }}<br/>
+                                Is crew: {{ notice.notice.crew }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-muted text-right">
+                    Entered: {{ notice.notice.pchd_entered_by }} {{ notice.notice.pchd_entered_date }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

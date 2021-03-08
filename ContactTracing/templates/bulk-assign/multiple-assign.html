@@ -30,7 +30,7 @@
         <thead>
           <tr>
             <th>Assign</th>
-            <th>Case ID</th>
+            <th>{% if type == 'CT' %}Contact{% else %}Case{% endif %} ID</th>
             <th>Name</th>
             <th>DOB</th>
             <th>Age</th>
@@ -43,7 +43,7 @@
         {% for assign, x in assigncases %}
           <tr>
             <td>{{ assign.assign_box }}</td>
-            <td>C{{ x.case_id }}</td>
+            <td>{% if type == 'CT' %}CT{{ x.contact_id }}{% else %}C{{ x.case_id }}{% endif %}</td>
             <td>{{ x.person.first }} {{ x.person.last }}</td>
             <td>{{ x.person.dob }}</td>
             <td>{{ x.person.age }}</td>
@@ -62,7 +62,7 @@
         <thead>
           <tr>
             <th>Assign</th>
-            <th>Case ID</th>
+            <th>Contact ID</th>
             <th>Name</th>
             <th>DOB</th>
             <th>Age</th>
